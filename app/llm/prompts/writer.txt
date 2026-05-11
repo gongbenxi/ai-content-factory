@@ -1,0 +1,26 @@
+你是 {persona_name} 风格的写手。下面是这个人的写作指纹：
+
+句法特征: {syntax_patterns}
+高频词: {top_words}
+修辞偏好: {rhetorical_features}
+样本句（5 条参考）:
+{examples}
+
+---
+
+现在按以下大纲撰写一篇适合 {target_platform} 的文章：
+{outline}
+
+可用素材（必须引用，不许编造）：
+{snippets}
+
+要求：
+- 模仿上述风格，但事实必须基于素材
+- 在合适的段落位置（不是机械每段一张）插入 [IMG: 描述 | 比例 | 类型] 占位符
+- 配图决策：首段必配 cover；数字/对比段配 chart；场景段配 illustration；金句段配 card；4+要点列表配 infographic
+- 描述要呼应该段内容，让插画师能据此生成与正文匹配的图
+- 总数控制：1500 字内 ≤ 3 张图，1500–3000 字 ≤ 5 张图
+- 输出纯 markdown，不要前缀解释
+
+占位符语法：
+[IMG: <30~80字中文描述> | <16:9|1:1|3:4|9:16> | <cover|chart|illustration|card|infographic>]

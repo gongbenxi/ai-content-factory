@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>AI Content Factory · Design Mockups · v1.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        brand: { 50:'#f5f3ff', 100:'#ede9fe', 200:'#ddd6fe', 400:'#a78bfa', 500:'#8b5cf6', 600:'#7c3aed', 700:'#6d28d9', 900:'#4c1d95' },
+        ink:   { 900:'#0f172a', 700:'#334155', 500:'#64748b', 300:'#cbd5e1', 100:'#f1f5f9' },
+      },
+      fontFamily: { sans: ['ui-sans-serif','system-ui','-apple-system','PingFang SC','Helvetica Neue','sans-serif'] }
+    }
+  }
+}
+</script>
+<style>
+  body { background:#e9eaee; }
+  .frame { background:#fff; border-radius:14px; box-shadow:0 30px 60px -20px rgba(0,0,0,.18), 0 8px 16px -8px rgba(0,0,0,.1); overflow:hidden; }
+  .frame-label { font-family:ui-monospace,'SF Mono',monospace; font-size:11px; letter-spacing:.04em; color:#475569; }
+  .dot { width:12px;height:12px;border-radius:9999px;display:inline-block; }
+  .annot { background:#fef3c7; border:1px dashed #f59e0b; color:#78350f; font-size:11px; padding:2px 8px; border-radius:6px; }
+  .scroll-fade { background: linear-gradient(180deg, transparent, #fff 90%); }
+  .glass { background:rgba(255,255,255,.6); backdrop-filter: blur(10px); }
+  .gradient-text { background: linear-gradient(135deg,#7c3aed,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .timeline-line { background: linear-gradient(90deg, #ddd6fe 0%, #8b5cf6 var(--progress,30%), #e2e8f0 var(--progress,30%)); }
+</style>
+</head>
+<body class="text-ink-900">
+
+<!-- ============== Top Header ============== -->
+<header class="max-w-[1500px] mx-auto px-8 pt-10 pb-6">
+  <div class="flex items-end justify-between">
+    <div>
+      <div class="text-xs uppercase tracking-widest text-ink-500 mb-2">Design Mockups · High-Fidelity</div>
+      <h1 class="text-4xl font-bold gradient-text">AI Content Factory</h1>
+      <p class="text-ink-500 mt-2">Phase 1 · v1.0 · 6 Frames · 2026-05-08</p>
+    </div>
+    <div class="flex gap-2 text-xs">
+      <span class="px-3 py-1.5 bg-white rounded-full shadow-sm">Desktop 1440 × 900</span>
+      <span class="px-3 py-1.5 bg-white rounded-full shadow-sm">Light Theme</span>
+      <span class="px-3 py-1.5 bg-brand-100 text-brand-700 rounded-full shadow-sm font-medium">Tailwind / shadcn-ui style</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1500px] mx-auto px-8 pb-20 space-y-16">
+
+<!-- =================================================================== -->
+<!-- F01: Dashboard                                                       -->
+<!-- =================================================================== -->
+<section>
+  <div class="flex items-center gap-3 mb-3">
+    <span class="frame-label">F01 / Dashboard · 首页</span>
+    <span class="annot">入口：用户登录后默认页</span>
+  </div>
+  <div class="frame" style="width:1440px; height:900px;">
+    <div class="flex h-full">
+      <!-- Sidebar -->
+      <aside class="w-60 bg-ink-900 text-ink-100 p-6 flex flex-col">
+        <div class="flex items-center gap-2 mb-10">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-pink-500"></div>
+          <div class="font-semibold tracking-wide">Content Factory</div>
+        </div>
+        <nav class="space-y-1 text-sm">
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-brand-600 text-white"><span>🏠</span>Dashboard</a>
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ink-700 text-ink-300"><span>✨</span>新建生成</a>
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ink-700 text-ink-300"><span>📋</span>运行中 <span class="ml-auto text-xs bg-brand-500 px-2 py-0.5 rounded-full">3</span></a>
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ink-700 text-ink-300"><span>📚</span>文章库</a>
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ink-700 text-ink-300"><span>🎭</span>风格管理</a>
+          <a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-ink-700 text-ink-300"><span>📊</span>数据看板</a>
+        </nav>
+        <div class="mt-auto pt-6 border-t border-ink-700 text-xs text-ink-500">
+          <div class="flex items-center justify-between mb-2"><span>本月预算</span><span class="text-green-400">¥847 / ¥3000</span></div>
+          <div class="h-1.5 bg-ink-700 rounded-full overflow-hidden"><div class="h-full bg-green-400" style="width:28%"></div></div>
+        </div>
+        <div class="mt-4 flex items-center gap-2 text-xs">
+          <div class="w-7 h-7 rounded-full bg-brand-400"></div>
+          <div><div>席子</div><div class="text-ink-500">主编</div></div>
+          <span class="ml-auto text-ink-500">⚙️</span>
+        </div>
+      </aside>
+      <!-- Main -->
+      <div class="flex-1 bg-ink-100 overflow-hidden">
+        <!-- Top bar -->
+        <div class="h-16 bg-white border-b border-ink-300 flex items-center px-8 gap-4">
+          <h2 class="text-lg font-semibold">Dashboard</h2>
+          <span class="text-ink-500 text-sm">2026年5月8日 · 周五</span>
+          <div class="ml-auto flex items-center gap-3">
+            <div class="relative">
+              <input class="w-72 pl-10 pr-3 py-2 text-sm border border-ink-300 rounded-lg bg-ink-100 focus:outline-none" placeholder="搜索文章 / 选题 / 风格...">
+              <span class="absolute left-3 top-2 text-ink-500">🔍</span>
+            </div>
+            <button class="px-4 py-2 bg-brand-600 text-white text-sm rounded-lg shadow-sm hover:bg-brand-700">+ 新建生成</button>
+          </div>
+        </div>
+
+        <!-- KPI cards -->
+        <div class="px-8 pt-6 grid grid-cols-4 gap-4">
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500">今日产出</div>
+            <div class="flex items-end gap-2 mt-1"><div class="text-3xl font-bold">7</div><div class="text-sm text-green-600 mb-1">+3 vs 昨日</div></div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500">本月累计</div>
+            <div class="flex items-end gap-2 mt-1"><div class="text-3xl font-bold">142</div><div class="text-sm text-ink-500 mb-1">/ 目标 240</div></div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500">平均成本</div>
+            <div class="flex items-end gap-2 mt-1"><div class="text-3xl font-bold">¥2.34</div><div class="text-sm text-green-600 mb-1">达标 ✓</div></div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500">Reviewer Pass 率</div>
+            <div class="flex items-end gap-2 mt-1"><div class="text-3xl font-bold">86%</div><div class="text-sm text-green-600 mb-1">达标 ✓</div></div>
+          </div>
+        </div>
+
+        <!-- Today's Topics -->
+        <div class="px-8 pt-6">
+          <div class="flex items-center mb-3">
+            <h3 class="text-base font-semibold">🔥 今日选题候选</h3>
+            <span class="ml-2 text-xs text-ink-500">基于 6 源热榜聚合 · 已排除最近 30 天写过的</span>
+            <button class="ml-auto text-xs text-brand-600">刷新 ↻</button>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Topic Card 1 -->
+            <div class="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition cursor-pointer border-2 border-brand-500">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">#1 热度</span>
+                <span class="px-2 py-0.5 bg-brand-100 text-brand-700 text-xs rounded">技术</span>
+                <span class="ml-auto text-xs text-ink-500">质量评分 0.91</span>
+              </div>
+              <div class="font-semibold leading-snug mb-2">DeepSeek-V3 发布带来的国产大模型竞争格局变化</div>
+              <div class="text-xs text-ink-500 mb-3">推荐角度：技术拐点 + 商业影响双线</div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-ink-500">来源</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">微博</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">知乎</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">百度</span>
+              </div>
+              <button class="mt-3 w-full py-2 bg-brand-600 text-white text-sm rounded-lg hover:bg-brand-700">▶ 用此选题开跑</button>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition cursor-pointer">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">#2 热度</span>
+                <span class="px-2 py-0.5 bg-brand-100 text-brand-700 text-xs rounded">商业</span>
+                <span class="ml-auto text-xs text-ink-500">质量评分 0.83</span>
+              </div>
+              <div class="font-semibold leading-snug mb-2">小红书内容电商 2026 Q1 数据：种草到拔草路径变了吗</div>
+              <div class="text-xs text-ink-500 mb-3">推荐角度：数据解读 + 普通商家视角</div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-ink-500">来源</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">RSS</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">百度</span>
+              </div>
+              <button class="mt-3 w-full py-2 bg-ink-100 text-ink-700 text-sm rounded-lg hover:bg-ink-300">用此选题开跑</button>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition cursor-pointer">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded">#3 热度</span>
+                <span class="px-2 py-0.5 bg-brand-100 text-brand-700 text-xs rounded">情感</span>
+                <span class="ml-auto text-xs text-ink-500">质量评分 0.76</span>
+              </div>
+              <div class="font-semibold leading-snug mb-2">"五一返工焦虑" 上热搜：年轻人为什么越来越怕工作日</div>
+              <div class="text-xs text-ink-500 mb-3">推荐角度：社会现象 + 个人故事</div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-ink-500">来源</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">微博</span>
+                <span class="px-1.5 py-0.5 bg-ink-100 rounded">抖音</span>
+              </div>
+              <button class="mt-3 w-full py-2 bg-ink-100 text-ink-700 text-sm rounded-lg hover:bg-ink-300">用此选题开跑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Running Tasks -->
+        <div class="px-8 pt-6">
+          <h3 class="text-base font-semibold mb-3">⚡ 运行中</h3>
+          <div class="bg-white rounded-xl shadow-sm divide-y divide-ink-100">
+            <div class="px-5 py-3 flex items-center gap-4 text-sm">
+              <span class="dot bg-blue-500 animate-pulse"></span>
+              <span class="font-medium flex-1 truncate">DeepSeek-V3 国产大模型竞争格局变化</span>
+              <span class="text-ink-500">Researcher · 3/5 并行</span>
+              <div class="w-32 h-1.5 bg-ink-100 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:42%"></div></div>
+              <span class="text-xs text-ink-500">02:18</span>
+              <button class="text-brand-600 text-xs">查看 →</button>
+            </div>
+            <div class="px-5 py-3 flex items-center gap-4 text-sm">
+              <span class="dot bg-purple-500 animate-pulse"></span>
+              <span class="font-medium flex-1 truncate">小红书内容电商 Q1 数据解读</span>
+              <span class="text-ink-500">Writer · 写作中</span>
+              <div class="w-32 h-1.5 bg-ink-100 rounded-full overflow-hidden"><div class="h-full bg-purple-500" style="width:71%"></div></div>
+              <span class="text-xs text-ink-500">04:46</span>
+              <button class="text-brand-600 text-xs">查看 →</button>
+            </div>
+            <div class="px-5 py-3 flex items-center gap-4 text-sm">
+              <span class="dot bg-amber-500"></span>
+              <span class="font-medium flex-1 truncate">五一返工焦虑现象观察</span>
+              <span class="text-ink-500">Reviewer · 审阅中（第 2 轮）</span>
+              <div class="w-32 h-1.5 bg-ink-100 rounded-full overflow-hidden"><div class="h-full bg-amber-500" style="width:88%"></div></div>
+              <span class="text-xs text-ink-500">06:51</span>
+              <button class="text-brand-600 text-xs">查看 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- F02: New Run                                                         -->
+<!-- =================================================================== -->
+<section>
+  <div class="flex items-center gap-3 mb-3">
+    <span class="frame-label">F02 / New Run · 新建生成</span>
+    <span class="annot">入口：Dashboard "新建生成" 或 选题卡片直接跳入</span>
+  </div>
+  <div class="frame" style="width:1440px; height:900px;">
+    <div class="h-full bg-ink-100 overflow-hidden">
+      <!-- Top bar -->
+      <div class="h-16 bg-white border-b border-ink-300 flex items-center px-8">
+        <button class="text-ink-500 text-sm">← Dashboard</button>
+        <h2 class="ml-6 text-lg font-semibold">新建生成</h2>
+        <div class="ml-auto flex items-center gap-3">
+          <button class="px-4 py-2 text-ink-700 text-sm rounded-lg hover:bg-ink-100">保存草稿</button>
+          <button class="px-5 py-2 bg-brand-600 text-white text-sm rounded-lg shadow-sm hover:bg-brand-700 flex items-center gap-2"><span>▶</span>开始生成</button>
+        </div>
+      </div>
+
+      <div class="flex h-[calc(100%-4rem)]">
+        <!-- Form -->
+        <div class="flex-1 px-12 py-8 overflow-y-auto">
+          <!-- Step 1: Topic -->
+          <div class="mb-8">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-semibold">1</div>
+              <h3 class="font-semibold">选题</h3>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm">
+              <textarea class="w-full text-sm leading-relaxed border-0 focus:outline-none resize-none" rows="3" placeholder="一句话描述你想写什么...">DeepSeek-V3 发布带来的国产大模型竞争格局变化 — 技术拐点 + 商业影响双线</textarea>
+              <div class="flex items-center gap-2 pt-3 border-t border-ink-100 text-xs">
+                <span class="text-ink-500">来自候选</span>
+                <span class="px-2 py-0.5 bg-brand-100 text-brand-700 rounded">#1 热度</span>
+                <span class="px-2 py-0.5 bg-ink-100 rounded">技术</span>
+                <button class="ml-auto text-brand-600">查看相关素材 (12 条)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Style -->
+          <div class="mb-8">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-semibold">2</div>
+              <h3 class="font-semibold">选择风格</h3>
+              <span class="text-xs text-ink-500">系统将基于风格指纹模仿写作</span>
+            </div>
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-white rounded-xl p-4 shadow-sm border-2 border-brand-500 cursor-pointer">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-orange-400"></div>
+                  <div><div class="text-sm font-semibold">caoz</div><div class="text-xs text-ink-500">商业评论</div></div>
+                </div>
+                <div class="text-xs text-ink-500 leading-relaxed">短句 · 口语化 · 反问 · 观点强烈</div>
+                <div class="flex gap-1 mt-2 text-xs"><span class="px-1.5 bg-ink-100 rounded">#28篇样本</span></div>
+              </div>
+              <div class="bg-white rounded-xl p-4 shadow-sm border border-ink-200 cursor-pointer hover:border-brand-300">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400"></div>
+                  <div><div class="text-sm font-semibold">硅星人</div><div class="text-xs text-ink-500">科技报道</div></div>
+                </div>
+                <div class="text-xs text-ink-500 leading-relaxed">长句 · 数据密度高 · 客观</div>
+                <div class="flex gap-1 mt-2 text-xs"><span class="px-1.5 bg-ink-100 rounded">#15篇样本</span></div>
+              </div>
+              <div class="bg-white rounded-xl p-4 shadow-sm border border-ink-200 cursor-pointer hover:border-brand-300">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400"></div>
+                  <div><div class="text-sm font-semibold">小红书种草</div><div class="text-xs text-ink-500">生活</div></div>
+                </div>
+                <div class="text-xs text-ink-500 leading-relaxed">分点 · emoji · 第一人称 · 强 hook</div>
+                <div class="flex gap-1 mt-2 text-xs"><span class="px-1.5 bg-ink-100 rounded">#42篇样本</span></div>
+              </div>
+              <div class="bg-white rounded-xl p-4 shadow-sm border border-dashed border-ink-300 cursor-pointer hover:border-brand-300 flex items-center justify-center text-ink-500 text-sm">
+                + 新建风格
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Platform -->
+          <div class="mb-8">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-semibold">3</div>
+              <h3 class="font-semibold">目标平台</h3>
+              <span class="text-xs text-ink-500">不同平台字数/标签/首图规范不同</span>
+            </div>
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-white rounded-xl p-4 shadow-sm border-2 border-brand-500 cursor-pointer text-center">
+                <div class="text-2xl mb-1">📰</div>
+                <div class="text-sm font-semibold">公众号</div>
+                <div class="text-xs text-ink-500 mt-1">1500~2500 字 · 首图 16:9</div>
+              </div>
+              <div class="bg-white rounded-xl p-4 shadow-sm border border-ink-200 cursor-pointer hover:border-brand-300 text-center">
+                <div class="text-2xl mb-1">📕</div>
+                <div class="text-sm font-semibold">小红书</div>
+                <div class="text-xs text-ink-500 mt-1">300~800 字 · 9 图 · 3:4</div>
+              </div>
+              <div class="bg-white rounded-xl p-4 shadow-sm border border-ink-200 cursor-pointer hover:border-brand-300 text-center">
+                <div class="text-2xl mb-1">🐦</div>
+                <div class="text-sm font-semibold">微博</div>
+                <div class="text-xs text-ink-500 mt-1">≤ 2000 字 · 1~4 图</div>
+              </div>
+              <div class="bg-white rounded-xl p-4 shadow-sm border border-ink-200 cursor-pointer hover:border-brand-300 text-center">
+                <div class="text-2xl mb-1">📺</div>
+                <div class="text-sm font-semibold">知乎</div>
+                <div class="text-xs text-ink-500 mt-1">2000~5000 字 · 长文</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advanced -->
+          <details class="bg-white rounded-xl shadow-sm">
+            <summary class="px-5 py-3 cursor-pointer text-sm font-medium">高级选项</summary>
+            <div class="px-5 pb-5 space-y-4 text-sm">
+              <div class="grid grid-cols-3 gap-4">
+                <label><div class="text-xs text-ink-500 mb-1">研究并发数</div><input type="number" value="5" class="w-full px-3 py-2 border border-ink-300 rounded-lg"></label>
+                <label><div class="text-xs text-ink-500 mb-1">配图数量</div><input type="number" value="3" class="w-full px-3 py-2 border border-ink-300 rounded-lg"></label>
+                <label><div class="text-xs text-ink-500 mb-1">最大修订轮次</div><input type="number" value="2" class="w-full px-3 py-2 border border-ink-300 rounded-lg"></label>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <label><div class="text-xs text-ink-500 mb-1">写手模型</div><select class="w-full px-3 py-2 border border-ink-300 rounded-lg"><option>Claude Sonnet 4.6 (默认)</option><option>Claude Opus 4.7 (高质量)</option></select></label>
+                <label><div class="text-xs text-ink-500 mb-1">单次预算上限</div><input type="text" value="¥5.00" class="w-full px-3 py-2 border border-ink-300 rounded-lg"></label>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Right: Estimate panel -->
+        <div class="w-80 bg-white border-l border-ink-300 p-6 space-y-5">
+          <h3 class="font-semibold">预估</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between"><span class="text-ink-500">耗时</span><span class="font-mono">6~8 分钟</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">LLM 调用</span><span class="font-mono">~12 次</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">配图生成</span><span class="font-mono">3 张</span></div>
+            <div class="flex justify-between"><span class="text-ink-500">研究并行</span><span class="font-mono">5 worker</span></div>
+            <hr class="border-ink-100">
+            <div class="flex justify-between"><span class="font-semibold">预估成本</span><span class="font-mono text-green-600">¥2.30 ~ ¥2.80</span></div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+            <div class="font-semibold mb-1">⚠️ 提示</div>
+            生成中可随时介入：暂停 / 修改大纲 / 切换风格。
+          </div>
+          <div class="bg-brand-50 border border-brand-200 rounded-lg p-3 text-xs text-brand-900">
+            <div class="font-semibold mb-1">💡 风格匹配预测</div>
+            基于历史数据，<b>caoz</b> 风格 + <b>技术选题</b> Reviewer 通过率 92%。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- F03: Run Live                                                        -->
+<!-- =================================================================== -->
+<section>
+  <div class="flex items-center gap-3 mb-3">
+    <span class="frame-label">F03 / Run Live · 实时进度</span>
+    <span class="annot">关键页：SSE 实时推送 7 个 Agent 状态 + token 流式预览</span>
+  </div>
+  <div class="frame" style="width:1440px; height:900px;">
+    <div class="h-full bg-ink-100 overflow-hidden">
+      <div class="h-16 bg-white border-b border-ink-300 flex items-center px-8">
+        <button class="text-ink-500 text-sm">← Dashboard</button>
+        <div class="ml-6">
+          <div class="text-sm font-semibold">DeepSeek-V3 国产大模型竞争格局变化</div>
+          <div class="text-xs text-ink-500">run_id: 7a3f9c2b · 已运行 04:18 · 模型 Sonnet 4.6 · 已用 ¥1.84</div>
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <button class="px-3 py-1.5 text-sm border border-ink-300 rounded-lg hover:bg-ink-100">⏸ 暂停</button>
+          <button class="px-3 py-1.5 text-sm border border-ink-300 rounded-lg hover:bg-ink-100">⚙ 介入</button>
+          <button class="px-3 py-1.5 text-sm border border-red-300 text-red-700 rounded-lg hover:bg-red-50">✕ 中止</button>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="px-8 pt-8">
+        <div class="relative">
+          <div class="absolute top-5 left-12 right-12 h-1 timeline-line rounded-full" style="--progress:55%"></div>
+          <div class="relative grid grid-cols-7 gap-2">
+            <!-- Each agent step -->
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold shadow-md">✓</div>
+              <div class="mt-2 text-xs font-semibold">Topic</div>
+              <div class="text-[10px] text-ink-500">12s</div>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold shadow-md">✓</div>
+              <div class="mt-2 text-xs font-semibold">Planner</div>
+              <div class="text-[10px] text-ink-500">18s</div>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold shadow-md">✓</div>
+              <div class="mt-2 text-xs font-semibold">Research × 5</div>
+              <div class="text-[10px] text-ink-500">1m 32s · 23 snippets</div>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-semibold shadow-md">✓</div>
+              <div class="mt-2 text-xs font-semibold">Editor</div>
+              <div class="text-[10px] text-ink-500">22s</div>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center text-sm font-semibold shadow-md ring-4 ring-brand-200 animate-pulse">●</div>
+              <div class="mt-2 text-xs font-semibold text-brand-700">Writer</div>
+              <div class="text-[10px] text-brand-600">写作中 · 1842 字</div>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-ink-100 text-ink-300 flex items-center justify-center text-sm font-semibold">5</div>
+              <div class="mt-2 text-xs text-ink-500">Illustrator</div>
+            </div>
+            <div class="text-center">
+              <div class="mx-auto w-10 h-10 rounded-full bg-ink-100 text-ink-300 flex items-center justify-center text-sm font-semibold">6</div>
+              <div class="mt-2 text-xs text-ink-500">Reviewer</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body: 2 columns -->
+      <div class="grid grid-cols-3 gap-4 px-8 pt-6 h-[calc(100%-13rem)]">
+        <!-- Left: Live token stream -->
+        <div class="col-span-2 bg-white rounded-xl shadow-sm flex flex-col overflow-hidden">
+          <div class="px-5 py-3 border-b border-ink-100 flex items-center">
+            <span class="dot bg-brand-500 animate-pulse"></span>
+            <span class="ml-2 text-sm font-semibold">Writer 正在生成</span>
+            <span class="ml-2 text-xs text-ink-500">claude-sonnet-4-6 · prompt cache 命中 ✓</span>
+            <span class="ml-auto text-xs text-ink-500">tokens: 412 / 4096</span>
+          </div>
+          <div class="flex-1 overflow-y-auto p-5 text-sm leading-relaxed font-serif text-ink-900">
+            <p class="text-ink-500 text-xs mb-3 font-sans"># DeepSeek 这次的发布，让所有人都不淡定了</p>
+            <p>这两天科技圈最炸的消息，不是 OpenAI，也不是谷歌。是 DeepSeek。</p>
+            <p class="mt-3">一家杭州公司，把性能跟 GPT-4o 接近的模型，开源了。还告诉你训练成本只用了 600 万美元。</p>
+            <p class="mt-3">六百万美元什么概念？OpenAI 训 GPT-4 烧了一亿美元起步——而且人家还不开源。</p>
+            <p class="mt-3">[IMG: DeepSeek-V3 在 MMLU/HumanEval 等基准对比 GPT-4o 的柱状图 | 16:9]</p>
+            <p class="mt-3">这就是为什么过去 48 小时，硅谷一片哀嚎。Anthropic 的 Sonnet 4.6 周二刚发，今天直接被 DeepSeek 抢了头条。Marc Andreessen 在 X 上发：This is one of the most amazing and impressive breakthroughs I've ever seen.</p>
+            <p class="mt-3"><span class="bg-brand-100 px-1">但更关键的不是它强，是它<span class="border-r-2 border-brand-600 animate-pulse pr-px">。</span></span></p>
+          </div>
+          <div class="px-5 py-2 border-t border-ink-100 bg-ink-50 text-xs text-ink-500 flex items-center gap-3">
+            <span>📚 引用 8 条 snippet</span><span>·</span>
+            <span>🎨 已生成 2 个图片占位符</span><span>·</span>
+            <span>🎭 风格匹配 0.87</span>
+          </div>
+        </div>
+
+        <!-- Right: Sidebar (event log + research preview) -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-ink-100 text-sm font-semibold flex items-center"><span>事件流</span><button class="ml-auto text-xs text-ink-500">清屏</button></div>
+            <div class="px-4 py-2 space-y-2 text-xs font-mono max-h-72 overflow-y-auto">
+              <div class="flex gap-2"><span class="text-ink-300">04:18</span><span class="text-brand-600">writer.token</span><span class="truncate text-ink-700">"...让所有人都不淡定了..."</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">04:15</span><span class="text-blue-600">writer.start</span><span class="text-ink-700">prompt cache 命中</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">04:14</span><span class="text-green-600">editor.done</span><span class="text-ink-700">final_outline · 5 节</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">03:52</span><span class="text-amber-600">research.done</span><span class="text-ink-700">snippets: 23</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">03:14</span><span class="text-amber-600">researcher.done</span><span class="text-ink-700">q5 / 5</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">02:48</span><span class="text-amber-600">researcher.done</span><span class="text-ink-700">q3 / 5</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">02:30</span><span class="text-blue-600">research.fanout</span><span class="text-ink-700">5 workers</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">02:12</span><span class="text-green-600">planner.done</span><span class="text-ink-700">5 sub_queries</span></div>
+              <div class="flex gap-2"><span class="text-ink-300">01:54</span><span class="text-green-600">topic.done</span><span class="text-ink-700">DeepSeek-V3...</span></div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-ink-100 text-sm font-semibold">引用素材</div>
+            <div class="px-4 py-3 space-y-2 text-xs">
+              <div class="flex gap-2"><span class="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">数据</span><span class="truncate text-ink-700">DeepSeek-V3 在 MMLU 88.5...</span></div>
+              <div class="flex gap-2"><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">观点</span><span class="truncate text-ink-700">Andreessen 评论：one of...</span></div>
+              <div class="flex gap-2"><span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">背景</span><span class="truncate text-ink-700">训练成本仅 600 万美元...</span></div>
+              <button class="text-xs text-brand-600 mt-2">查看全部 23 条 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- F04: Article Editor                                                  -->
+<!-- =================================================================== -->
+<section>
+  <div class="flex items-center gap-3 mb-3">
+    <span class="frame-label">F04 / Article Editor · 草稿编辑器</span>
+    <span class="annot">入口：Reviewer 通过后或运行结束 → 进入编辑器二次修改</span>
+  </div>
+  <div class="frame" style="width:1440px; height:900px;">
+    <div class="h-full bg-ink-100 flex flex-col overflow-hidden">
+      <div class="h-16 bg-white border-b border-ink-300 flex items-center px-8">
+        <button class="text-ink-500 text-sm">← 文章库</button>
+        <div class="ml-6">
+          <input class="text-base font-semibold border-0 focus:outline-none" value="DeepSeek 这次的发布，让所有人都不淡定了">
+          <div class="text-xs text-ink-500">已生成 · caoz 风格 · 公众号 · 1872 字 · 3 图 · ¥2.34</div>
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <button class="px-3 py-1.5 text-sm border border-ink-300 rounded-lg hover:bg-ink-100">导出 .md</button>
+          <button class="px-3 py-1.5 text-sm border border-ink-300 rounded-lg hover:bg-ink-100">导出 .docx</button>
+          <button class="px-4 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">✓ 标记完成</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-12 gap-0 flex-1 overflow-hidden">
+        <!-- Editor area -->
+        <div class="col-span-7 bg-white border-r border-ink-300 overflow-y-auto">
+          <!-- Toolbar -->
+          <div class="sticky top-0 px-6 py-3 border-b border-ink-100 bg-white flex items-center gap-1 text-sm text-ink-700">
+            <button class="px-2 py-1 hover:bg-ink-100 rounded font-bold">B</button>
+            <button class="px-2 py-1 hover:bg-ink-100 rounded italic">I</button>
+            <button class="px-2 py-1 hover:bg-ink-100 rounded">H1</button>
+            <button class="px-2 py-1 hover:bg-ink-100 rounded">H2</button>
+            <span class="mx-2 text-ink-300">|</span>
+            <button class="px-2 py-1 hover:bg-ink-100 rounded">链接</button>
+            <button class="px-2 py-1 hover:bg-ink-100 rounded">引用</button>
+            <button class="px-2 py-1 hover:bg-ink-100 rounded">列表</button>
+            <span class="ml-auto text-xs text-ink-500">Markdown · 自动保存于 12 秒前</span>
+          </div>
+
+          <article class="px-12 py-8 text-base leading-loose text-ink-900 font-serif">
+            <h1 class="text-2xl font-bold mb-6">DeepSeek 这次的发布，让所有人都不淡定了</h1>
+            <p>这两天科技圈最炸的消息，不是 OpenAI，也不是谷歌。是 DeepSeek。</p>
+            <p>一家杭州公司，把性能跟 GPT-4o 接近的模型，开源了。还告诉你训练成本只用了 600 万美元。</p>
+            <p>六百万美元什么概念？OpenAI 训 GPT-4 烧了一亿美元起步——而且人家还不开源。</p>
+            <figure class="my-6">
+              <div class="aspect-video rounded-lg bg-gradient-to-br from-brand-200 via-pink-200 to-orange-200 flex items-center justify-center text-ink-500">[配图 1: DeepSeek 性能对比柱状图]</div>
+              <figcaption class="text-xs text-ink-500 text-center mt-2">DeepSeek-V3 vs GPT-4o · 关键基准对比</figcaption>
+            </figure>
+            <p>这就是为什么过去 48 小时，硅谷一片哀嚎。Anthropic 的 Sonnet 4.6 周二刚发，今天直接被 DeepSeek 抢了头条。</p>
+            <p>但更关键的不是它强，是它<b>开源</b>。</p>
+            <h2 class="text-xl font-bold mt-8 mb-4">国内创业公司，可能要变天</h2>
+            <p>过去两年，国内大模型创业公司有个共同的痛点：自己训不出 SOTA 模型，调 OpenAI 又被卡，调国内闭源大厂又贵。</p>
+            <p class="text-ink-500 italic">[继续编辑...]</p>
+          </article>
+        </div>
+
+        <!-- Right inspector -->
+        <div class="col-span-5 bg-ink-100 overflow-y-auto">
+          <!-- Tabs -->
+          <div class="bg-white border-b border-ink-300 px-5 flex gap-5 text-sm">
+            <button class="py-3 border-b-2 border-brand-600 text-brand-700 font-medium">配图 (3)</button>
+            <button class="py-3 text-ink-500">风格匹配</button>
+            <button class="py-3 text-ink-500">Review</button>
+            <button class="py-3 text-ink-500">平台预览</button>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <!-- Image card 1 -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div class="aspect-video bg-gradient-to-br from-brand-200 via-pink-200 to-orange-200 flex items-center justify-center text-ink-500 text-sm">配图 1 · 16:9</div>
+              <div class="p-4">
+                <div class="text-xs text-ink-500 mb-2">Prompt</div>
+                <div class="text-sm mb-3 leading-relaxed">DeepSeek-V3 在 MMLU/HumanEval 等基准对比 GPT-4o 的柱状图，扁平科技风格，深蓝色调</div>
+                <div class="flex gap-2 text-xs">
+                  <button class="px-2 py-1 bg-ink-100 rounded hover:bg-ink-300">↻ 重新生成</button>
+                  <button class="px-2 py-1 bg-ink-100 rounded hover:bg-ink-300">✏️ 改 prompt</button>
+                  <button class="px-2 py-1 bg-ink-100 rounded hover:bg-ink-300">⬆ 上传替换</button>
+                  <span class="ml-auto text-green-600">一致性 0.92 ✓</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div class="aspect-video bg-gradient-to-br from-blue-200 via-cyan-200 to-emerald-200 flex items-center justify-center text-ink-500 text-sm">配图 2 · 16:9</div>
+              <div class="p-4">
+                <div class="text-xs text-ink-500 mb-2">Prompt</div>
+                <div class="text-sm mb-3 leading-relaxed">国内外 AI 公司估值对比示意图，简约商务风</div>
+                <div class="flex gap-2 text-xs">
+                  <button class="px-2 py-1 bg-ink-100 rounded hover:bg-ink-300">↻ 重新生成</button>
+                  <button class="px-2 py-1 bg-ink-100 rounded hover:bg-ink-300">✏️ 改 prompt</button>
+                  <span class="ml-auto text-amber-600">一致性 0.74 ⚠</span>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div class="aspect-square bg-gradient-to-br from-rose-200 via-amber-200 to-yellow-200 flex items-center justify-center text-ink-500 text-sm">配图 3 · 1:1</div>
+              <div class="p-4">
+                <div class="text-xs text-ink-500 mb-2">Prompt</div>
+                <div class="text-sm mb-3 leading-relaxed">未来 3 个月 AI 行业关键节点时间轴</div>
+                <div class="flex gap-2 text-xs">
+                  <button class="px-2 py-1 bg-ink-100 rounded hover:bg-ink-300">↻ 重新生成</button>
+                  <span class="ml-auto text-green-600">一致性 0.89 ✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- F05: Style Manager                                                   -->
+<!-- =================================================================== -->
+<section>
+  <div class="flex items-center gap-3 mb-3">
+    <span class="frame-label">F05 / Style Manager · 风格管理</span>
+    <span class="annot">入口：侧边栏 · 上传范文 → 自动抽取风格指纹</span>
+  </div>
+  <div class="frame" style="width:1440px; height:900px;">
+    <div class="h-full flex bg-ink-100 overflow-hidden">
+      <!-- Left list -->
+      <div class="w-96 bg-white border-r border-ink-300 flex flex-col">
+        <div class="px-5 py-4 border-b border-ink-100">
+          <h2 class="font-semibold mb-3">风格指纹库</h2>
+          <button class="w-full py-2 bg-brand-600 text-white text-sm rounded-lg shadow-sm">+ 新建风格</button>
+        </div>
+        <div class="flex-1 overflow-y-auto divide-y divide-ink-100">
+          <div class="px-5 py-4 bg-brand-50 border-l-4 border-brand-600 cursor-pointer">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-orange-400 shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center"><span class="font-semibold">caoz</span><span class="ml-auto text-xs text-ink-500">28 篇</span></div>
+                <div class="text-xs text-ink-500 mt-1">商业评论 · 短句 · 反问</div>
+                <div class="text-xs text-green-600 mt-2">✓ 已用于 47 篇生成</div>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-4 hover:bg-ink-50 cursor-pointer">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center"><span class="font-semibold">硅星人</span><span class="ml-auto text-xs text-ink-500">15 篇</span></div>
+                <div class="text-xs text-ink-500 mt-1">科技报道 · 长句 · 数据</div>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-4 hover:bg-ink-50 cursor-pointer">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center"><span class="font-semibold">小红书种草</span><span class="ml-auto text-xs text-ink-500">42 篇</span></div>
+                <div class="text-xs text-ink-500 mt-1">生活 · 分点 · emoji</div>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-4 hover:bg-ink-50 cursor-pointer">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center"><span class="font-semibold">老虎ESG</span><span class="ml-auto text-xs text-ink-500 text-amber-600">3 篇 ⚠</span></div>
+                <div class="text-xs text-ink-500 mt-1">需要至少 5 篇样本</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right detail -->
+      <div class="flex-1 overflow-y-auto p-8">
+        <div class="flex items-start gap-5 mb-8">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-400 to-orange-400"></div>
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold">caoz</h2>
+            <div class="text-ink-500 text-sm mt-1">商业评论 · 由 28 篇范文提取 · 最近更新 3 天前</div>
+            <div class="flex gap-2 mt-3 text-xs">
+              <span class="px-2 py-1 bg-ink-100 rounded">已用于 47 篇生成</span>
+              <span class="px-2 py-1 bg-green-100 text-green-700 rounded">盲测识别率 31% （优）</span>
+            </div>
+          </div>
+          <button class="px-3 py-1.5 text-sm border border-ink-300 rounded-lg">编辑</button>
+        </div>
+
+        <!-- Fingerprint visualizations -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500 mb-3">平均句长</div>
+            <div class="text-3xl font-bold">14.3</div>
+            <div class="text-xs text-ink-500 mt-1">字 · 比平均短 38%</div>
+            <div class="mt-3 flex gap-0.5 items-end h-12">
+              <div class="flex-1 bg-brand-500 rounded-t" style="height:40%"></div>
+              <div class="flex-1 bg-brand-500 rounded-t" style="height:60%"></div>
+              <div class="flex-1 bg-brand-500 rounded-t" style="height:80%"></div>
+              <div class="flex-1 bg-brand-500 rounded-t" style="height:50%"></div>
+              <div class="flex-1 bg-brand-500 rounded-t" style="height:30%"></div>
+              <div class="flex-1 bg-brand-500 rounded-t" style="height:20%"></div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500 mb-3">反问句频率</div>
+            <div class="text-3xl font-bold">12.8%</div>
+            <div class="text-xs text-ink-500 mt-1">是平均的 4.3 倍</div>
+            <div class="mt-3 h-12 flex items-center">
+              <div class="w-12 h-12 rounded-full border-4 border-brand-500 flex items-center justify-center text-sm font-bold">!?</div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-5 shadow-sm">
+            <div class="text-xs text-ink-500 mb-3">情感倾向</div>
+            <div class="text-3xl font-bold">中性偏锐</div>
+            <div class="mt-3 h-12 flex items-center">
+              <div class="w-full h-2 bg-ink-100 rounded-full relative"><div class="absolute top-1/2 left-[68%] -translate-y-1/2 w-4 h-4 rounded-full bg-brand-600 ring-4 ring-brand-100"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Word cloud -->
+        <div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+          <div class="text-sm font-semibold mb-4">高频词</div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <span class="text-3xl font-bold text-brand-700">商业</span>
+            <span class="text-2xl font-semibold text-brand-600">逻辑</span>
+            <span class="text-2xl font-semibold">本质</span>
+            <span class="text-xl text-ink-700">所以</span>
+            <span class="text-xl text-ink-700">核心</span>
+            <span class="text-lg text-ink-500">没有</span>
+            <span class="text-lg text-ink-500">如果</span>
+            <span class="text-lg text-ink-500">问题</span>
+            <span class="text-base text-ink-500">价值</span>
+            <span class="text-base text-ink-500">真的</span>
+            <span class="text-base text-ink-500">其实</span>
+            <span class="text-sm text-ink-300">市场</span>
+            <span class="text-sm text-ink-300">用户</span>
+            <span class="text-sm text-ink-300">数据</span>
+          </div>
+        </div>
+
+        <!-- Sample sentences -->
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-sm font-semibold mb-4">样本句（5 条）</div>
+          <div class="space-y-3 text-sm leading-relaxed text-ink-700">
+            <div class="px-4 py-3 bg-ink-50 rounded-lg border-l-4 border-brand-300">"所以问题来了：用户真的需要这个吗？"</div>
+            <div class="px-4 py-3 bg-ink-50 rounded-lg border-l-4 border-brand-300">"商业的本质从来没变，只是叙事换了一种。"</div>
+            <div class="px-4 py-3 bg-ink-50 rounded-lg border-l-4 border-brand-300">"这事儿你别看它热闹，逻辑一推就破。"</div>
+            <div class="px-4 py-3 bg-ink-50 rounded-lg border-l-4 border-brand-300">"投资人不傻，市场也不傻，傻的是中间那帮人。"</div>
+            <div class="px-4 py-3 bg-ink-50 rounded-lg border-l-4 border-brand-300">"你说他错了吗？没错。你说他对了吗？也没全对。"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- F06: Settings                                                        -->
+<!-- =================================================================== -->
+<section>
+  <div class="flex items-center gap-3 mb-3">
+    <span class="frame-label">F06 / Settings · 设置</span>
+    <span class="annot">入口：侧边栏底部 · 模型/Key/并发/预算</span>
+  </div>
+  <div class="frame" style="width:1440px; height:900px;">
+    <div class="h-full bg-ink-100 flex overflow-hidden">
+      <!-- Sub nav -->
+      <div class="w-56 bg-white border-r border-ink-300 py-6">
+        <div class="px-4 text-xs uppercase tracking-widest text-ink-500 mb-3">设置</div>
+        <nav class="text-sm space-y-1">
+          <a class="block px-4 py-2 bg-brand-50 text-brand-700 border-l-4 border-brand-600 font-medium">模型与 Key</a>
+          <a class="block px-4 py-2 text-ink-700 hover:bg-ink-50">并发与预算</a>
+          <a class="block px-4 py-2 text-ink-700 hover:bg-ink-50">数据存储</a>
+          <a class="block px-4 py-2 text-ink-700 hover:bg-ink-50">内容审核</a>
+          <a class="block px-4 py-2 text-ink-700 hover:bg-ink-50">可观测性</a>
+          <a class="block px-4 py-2 text-ink-700 hover:bg-ink-50">通知</a>
+          <a class="block px-4 py-2 text-ink-700 hover:bg-ink-50">关于</a>
+        </nav>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-10">
+        <h2 class="text-2xl font-bold">模型与 API Key</h2>
+        <p class="text-ink-500 text-sm mt-1">配置各 Agent 使用的模型，以及外部服务的 Key。</p>
+
+        <!-- Model assignment -->
+        <div class="mt-8 bg-white rounded-xl shadow-sm">
+          <div class="px-6 py-4 border-b border-ink-100 font-semibold">Agent 模型分配</div>
+          <div class="divide-y divide-ink-100">
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">TopicAgent</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>claude-sonnet-4-6</option></select>
+              <span class="text-xs text-ink-500">~¥0.04 / 调用</span>
+            </div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">PlannerAgent</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>claude-sonnet-4-6</option></select>
+              <span class="text-xs text-ink-500">~¥0.06 / 调用</span>
+            </div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">ResearcherAgent</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>claude-haiku-4-5 (省钱)</option><option>claude-sonnet-4-6</option></select>
+              <span class="text-xs text-green-600">~¥0.02 / 调用 · 5 并发</span>
+            </div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">EditorAgent</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>claude-sonnet-4-6</option></select>
+              <span class="text-xs text-ink-500">~¥0.08 / 调用</span>
+            </div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">WriterAgent ⭐</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>claude-sonnet-4-6</option><option>claude-opus-4-7 (高质量+)</option></select>
+              <span class="text-xs text-ink-500">~¥0.45 / 调用 · prompt cache 节省 70%</span>
+            </div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">IllustratorAgent</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>Seedream 4.5 (Coze)</option><option>Flux Pro 1.1</option><option>Recraft V3</option></select>
+              <span class="text-xs text-ink-500">~¥0.20 / 张</span>
+            </div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm">
+              <span class="w-32 text-ink-700">ReviewerAgent</span>
+              <select class="flex-1 max-w-xs px-3 py-2 border border-ink-300 rounded-lg"><option>claude-sonnet-4-6 (含 Vision)</option></select>
+              <span class="text-xs text-ink-500">~¥0.12 / 调用</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Keys -->
+        <div class="mt-6 bg-white rounded-xl shadow-sm">
+          <div class="px-6 py-4 border-b border-ink-100 font-semibold flex items-center">外部 API Key<span class="ml-auto text-xs text-ink-500">通过环境变量注入，不存储明文</span></div>
+          <div class="divide-y divide-ink-100">
+            <div class="px-6 py-4 flex items-center gap-4 text-sm"><span class="w-32 text-ink-700">Anthropic</span><span class="font-mono text-ink-500">sk-ant-api03-••••••••••••3f9c</span><span class="ml-auto text-green-600 text-xs">✓ 已验证</span></div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm"><span class="w-32 text-ink-700">Tavily</span><span class="font-mono text-ink-500">tvly-••••••••8a2e</span><span class="ml-auto text-green-600 text-xs">✓ 已验证</span></div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm"><span class="w-32 text-ink-700">Coze (图像)</span><span class="font-mono text-ink-500">pat_••••••••c4d1</span><span class="ml-auto text-green-600 text-xs">✓ 已验证</span></div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm"><span class="w-32 text-ink-700">阿里云内容安全</span><span class="font-mono text-ink-500">未配置</span><span class="ml-auto text-amber-600 text-xs">⚠ 请配置</span></div>
+            <div class="px-6 py-4 flex items-center gap-4 text-sm"><span class="w-32 text-ink-700">Langfuse</span><span class="font-mono text-ink-500">https://langfuse.local:3000</span><span class="ml-auto text-green-600 text-xs">✓ 已连接</span></div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button class="px-4 py-2 text-sm border border-ink-300 rounded-lg">取消</button>
+          <button class="px-5 py-2 text-sm bg-brand-600 text-white rounded-lg">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== -->
+<!-- Design System tail                                                   -->
+<!-- =================================================================== -->
+<section class="pt-8">
+  <div class="frame-label mb-3">Design Tokens · Style Reference</div>
+  <div class="frame p-8" style="width:1440px;">
+    <div class="grid grid-cols-4 gap-8 text-sm">
+      <div>
+        <div class="font-semibold mb-3">主色 · Brand</div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-brand-50"></div>50</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-brand-100"></div>100</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-brand-500"></div>500 (主)</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-brand-600"></div>600 (按钮)</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-brand-700"></div>700 (悬停)</div>
+        </div>
+      </div>
+      <div>
+        <div class="font-semibold mb-3">中性 · Ink</div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-ink-100 border"></div>100 (背景)</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-ink-300"></div>300 (描边)</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-ink-500"></div>500 (次要文字)</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-ink-700"></div>700</div>
+          <div class="flex items-center gap-2"><div class="w-8 h-8 rounded bg-ink-900"></div>900 (主文字)</div>
+        </div>
+      </div>
+      <div>
+        <div class="font-semibold mb-3">字阶</div>
+        <div class="space-y-2">
+          <div class="text-3xl font-bold">H1 · 30/700</div>
+          <div class="text-xl font-bold">H2 · 20/700</div>
+          <div class="text-base font-semibold">H3 · 16/600</div>
+          <div class="text-sm">Body · 14/400</div>
+          <div class="text-xs text-ink-500">Caption · 12/400</div>
+        </div>
+      </div>
+      <div>
+        <div class="font-semibold mb-3">圆角 / 阴影</div>
+        <div class="space-y-2">
+          <div class="px-3 py-2 bg-white shadow-sm rounded-lg text-xs">rounded-lg + shadow-sm</div>
+          <div class="px-3 py-2 bg-white shadow-sm rounded-xl text-xs">rounded-xl + shadow-sm (卡片)</div>
+          <div class="px-3 py-2 bg-white shadow-md rounded-2xl text-xs">rounded-2xl + shadow-md (弹窗)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="max-w-[1500px] mx-auto px-8 py-10 text-center text-xs text-ink-500">
+  AI Content Factory · Phase 1 Mockups · 在浏览器中查看获得最佳效果<br>
+  本 HTML 文件可直接交付给设计师做 Figma 二次还原，或作为产品评审稿
+</footer>
+
+</body>
+</html>

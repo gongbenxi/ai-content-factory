@@ -1,0 +1,47 @@
+# ==============================================================
+# AI Content Factory — 多 Provider 模型配置
+# ==============================================================
+# 切换 provider：改对应 agent 的 provider 字段即可，Agent 代码不动。
+
+defaults:
+  active_provider: xiaomi
+
+providers:
+  xiaomi:
+    base_url: "https://token-plan-cn.xiaomimimo.com/v1"
+    api_key_env: "MIMO_API_KEY"
+    models:
+      fast: "mimo-v2.5"
+      balanced: "mimo-v2.5-pro"
+
+  deepseek:
+    base_url: "https://api.deepseek.com/v1"
+    api_key_env: "DEEPSEEK_API_KEY"
+    models:
+      fast: "deepseek-chat"
+      balanced: "deepseek-chat"
+
+  openai:
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"
+    models:
+      fast: "gpt-4o-mini"
+      balanced: "gpt-4o"
+
+# 每个 agent 选 provider + tier
+agents:
+  topic:      { provider: xiaomi, tier: fast }
+  researcher: { provider: xiaomi, tier: fast }
+  planner:    { provider: xiaomi, tier: balanced }
+  editor:     { provider: xiaomi, tier: balanced }
+  writer:     { provider: xiaomi, tier: balanced }
+  illustrator: { provider: xiaomi, tier: fast }
+  reviewer:   { provider: xiaomi, tier: balanced }
+  reviser:    { provider: xiaomi, tier: balanced }
+
+# 预算控制
+budget:
+  max_tokens_per_run: 200000     # token 上限
+  warn_at_percent: 80            # 警告 + 降级阈值
+  fallback_tier: fast            # 降级到轻量模型
+  budget_limit_cents: 300        # 付费 provider 金额上限
