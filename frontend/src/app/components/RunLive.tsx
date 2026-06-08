@@ -103,13 +103,14 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
   const currentRunStatus = runStatus[normalizedStatus || "drafting"] ?? runStatus.drafting;
   const isTerminal = run?.status === "done" || run?.status === "failed" || run?.status === "aborted" || run?.status === "paused";
   const startupWarning = emptyEventTimedOut && !businessEvents.length && !draft && !isTerminal;
-  const eventUsage = useMemo(() => sumUsageFromEvents(allEvents), [allEvents]);
+  const eventUsage = useMemo(() => sumUsageFromEvents(allEvents, settings), [allEvents, settings]);
+  const eventUsageByAgent = useMemo(() => usageByAgentFromEvents(allEvents), [allEvents]);
   const liveTotalTokens = Math.max(run?.total_tokens || 0, eventUsage.totalTokens);
-  const liveCostCents = Math.max(run?.cost_cents || 0, eventUsage.costCents);
+  const liveCostYuan = Math.max((run?.cost_cents || 0) / 100, eventUsage.costYuan);
   const usageByAgent = run?.usage_by_agent || {};
   const costData = agentDefs.map((a, i) => ({
     name: a.name.replace("Agent", ""),
-    value: (usageByAgent[a.key]?.cost_cents || 0) / 100,
+    value: estimateAgentCostYuan(a.key, usageByAgent[a.key], eventUsageByAgent[a.key], settings),
     color: costColors[i],
   }));
 
@@ -171,7 +172,7 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
         <KPI label="进度" value={`${doneCount} / ${agents.length}`} sub={agents.find((a) => a.status === "running")?.name || "等待事件"} />
         <KPI label="事件数" value={String(allEvents.length)} sub="历史 + 实时 SSE" />
         <KPI label="累计 token" value={liveTotalTokens.toLocaleString()} sub={eventUsage.totalTokens ? "事件实时汇总" : `预算 ${formatTokenBudget(settings)}`} />
-        <KPI label="累计成本" value={`¥${(liveCostCents / 100).toFixed(2)}`} sub={eventUsage.costCents ? "事件实时汇总" : run?.cost_cents ? "后端累计" : "等待用量"} />
+        <KPI label="累计成本" value={formatMoney(liveCostYuan)} sub={eventUsage.costYuan ? "事件实时估算" : run?.cost_cents ? "后端累计" : "等待用量"} />
       </div>
 
       {graphError && (
@@ -259,7 +260,7 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
                   <Pie data={costData} dataKey="value" innerRadius={40} outerRadius={70} paddingAngle={2}>
                     {costData.map((c) => <Cell key={`cell-${c.name}`} fill={c.color} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(value: number) => formatMoney(Number(value))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -268,7 +269,7 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
                 <div key={c.name} className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />
                   <span className="flex-1">{c.name}</span>
-                  <span className="tabular-nums text-muted-foreground">¥{c.value.toFixed(2)}</span>
+                  <span className="tabular-nums text-muted-foreground">{formatMoney(c.value)}</span>
                 </div>
               ))}
             </div>
@@ -396,17 +397,82 @@ function mergeEvents(historyEvents: any[], liveEvents: any[]) {
   return merged;
 }
 
-function sumUsageFromEvents(events: any[]) {
+function sumUsageFromEvents(events: any[], settings: any) {
   return events.reduce((acc, event) => {
     const usage = event.data?.usage;
     if (!usage) return acc;
     const totalTokens = Number(usage.total_tokens ?? ((usage.input_tokens || 0) + (usage.output_tokens || 0))) || 0;
-    const costCents = Number(usage.cost_cents || 0) || 0;
+    const costYuan = costYuanFromUsage(usage, event.data?.agent, settings);
     return {
       totalTokens: acc.totalTokens + totalTokens,
-      costCents: acc.costCents + costCents,
+      costYuan: acc.costYuan + costYuan,
     };
-  }, { totalTokens: 0, costCents: 0 });
+  }, { totalTokens: 0, costYuan: 0 });
+}
+
+function usageByAgentFromEvents(events: any[]) {
+  return events.reduce((acc, event) => {
+    const agent = event.data?.agent;
+    const usage = event.data?.usage;
+    if (!agent || !usage) return acc;
+    const key = agent === "researcher_worker" ? "researcher" : agent;
+    const prev = acc[key] || {};
+    acc[key] = {
+      ...usage,
+      input_tokens: Number(prev.input_tokens || 0) + Number(usage.input_tokens || 0),
+      output_tokens: Number(prev.output_tokens || 0) + Number(usage.output_tokens || 0),
+      total_tokens: Number(prev.total_tokens || 0) + Number(usage.total_tokens || 0),
+      cost_cents: Number(prev.cost_cents || 0) + Number(usage.cost_cents || 0),
+      provider: usage.provider || prev.provider,
+      tier: usage.tier || prev.tier,
+    };
+    return acc;
+  }, {} as Record<string, any>);
+}
+
+function estimateAgentCostYuan(agentKey: string, runUsage: any, eventUsage: any, settings: any) {
+  const explicit = Math.max(Number(runUsage?.cost_cents || 0), Number(eventUsage?.cost_cents || 0)) / 100;
+  if (explicit > 0) return explicit;
+  const eventEstimate = costYuanFromUsage(eventUsage, agentKey, settings);
+  const runEstimate = costYuanFromUsage(runUsage, agentKey, settings);
+  return Math.max(eventEstimate, runEstimate);
+}
+
+function costYuanFromUsage(usage: any, agentKey: string | undefined, settings: any) {
+  if (!usage) return 0;
+  const explicitCents = Number(usage.cost_cents || 0);
+  if (explicitCents > 0) return explicitCents / 100;
+  const inputTokens = Number(usage.input_tokens || 0);
+  const outputTokens = Number(usage.output_tokens || 0);
+  if (!inputTokens && !outputTokens) return 0;
+  const cfg = agentKey ? settings?.agents?.[agentKey] : null;
+  const provider = usage.provider || cfg?.provider || "deepseek";
+  const tier = usage.tier || cfg?.tier || "fast";
+  const pricing = FRONTEND_MODEL_PRICING[provider]?.[tier];
+  if (!pricing) return 0;
+  const cents = (inputTokens * pricing.input_cents_per_1m + outputTokens * pricing.output_cents_per_1m) / 1_000_000;
+  return cents / 100;
+}
+
+const FRONTEND_MODEL_PRICING: Record<string, Record<string, { input_cents_per_1m: number; output_cents_per_1m: number }>> = {
+  deepseek: {
+    fast: { input_cents_per_1m: 14, output_cents_per_1m: 28 },
+    balanced: { input_cents_per_1m: 14, output_cents_per_1m: 28 },
+  },
+  openai: {
+    fast: { input_cents_per_1m: 15, output_cents_per_1m: 60 },
+    balanced: { input_cents_per_1m: 250, output_cents_per_1m: 1000 },
+  },
+  xiaomi: {
+    fast: { input_cents_per_1m: 0, output_cents_per_1m: 0 },
+    balanced: { input_cents_per_1m: 0, output_cents_per_1m: 0 },
+  },
+};
+
+function formatMoney(yuan: number) {
+  if (!Number.isFinite(yuan) || yuan <= 0) return "¥0.00";
+  if (yuan < 0.01) return `¥${yuan.toFixed(4)}`;
+  return `¥${yuan.toFixed(2)}`;
 }
 
 function KPI({ label, value, sub }: { label: string; value: string; sub: string }) {
