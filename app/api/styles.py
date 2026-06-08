@@ -8,6 +8,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from app.api.errors import raise_llm_http_error
 from app.services.memory_store import STYLES
 
 logger = logging.getLogger(__name__)
@@ -173,7 +174,10 @@ async def analyze_style(style_id: str, req: AnalyzeRequest):
         {"role": "user", "content": f"请分析以下 {len(articles)} 篇文章的写作风格：\n\n{articles_text}"},
     ]
 
-    fingerprint, usage = await llm.chat_json("editor", messages)
+    try:
+        fingerprint, usage = await llm.chat_json("editor", messages)
+    except Exception as exc:
+        raise_llm_http_error(exc, action="抽取风格指纹失败")
 
     # 确保 fingerprint 是 dict
     if isinstance(fingerprint, str):

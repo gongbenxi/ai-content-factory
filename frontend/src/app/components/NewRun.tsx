@@ -10,12 +10,21 @@ import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { AlertCircle, Loader2, Rocket, Wand2 } from "lucide-react";
-import { createRun, getRun, getSettings } from "../../lib/api";
+import { createRun, getRun, getSettings, listStyles } from "../../lib/api";
+
+type StyleOption = {
+  id: string;
+  name: string;
+  description?: string;
+  sample_count?: number;
+};
 
 export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLaunch: (runId: string, snapshot?: any) => void }) {
   const [request, setRequest] = useState(initialTitle ?? "今天 AI 圈有什么值得写的？模仿 caoz 风格的公众号文。");
   const [platform, setPlatform] = useState("wechat");
-  const [style, setStyle] = useState("caoz");
+  const [style, setStyle] = useState("");
+  const [styles, setStyles] = useState<StyleOption[]>([]);
+  const [stylesLoading, setStylesLoading] = useState(true);
   const [parallel, setParallel] = useState([5]);
   const [revise, setRevise] = useState([2]);
   const [maxImg, setMaxImg] = useState([4]);
@@ -33,7 +42,7 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
     try {
       const res = await createRun({
         user_request: request,
-        style_id: style === "custom" ? undefined : style,
+        style_id: style || undefined,
         target_platform: platform,
         mock: mockMode,
         config: {
@@ -62,6 +71,15 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
       const limitCents = Number(data?.budget?.budget_limit_cents);
       if (!Number.isNaN(limitCents)) setBudgetLimitCents(limitCents);
     }).catch(() => undefined);
+
+    listStyles().then((data) => {
+      const rows = data.styles || [];
+      setStyles(rows);
+      const preferred = rows.find((s: StyleOption) => s.id === "default") || rows.find((s: StyleOption) => s.id === "caoz") || rows[0];
+      setStyle((current) => rows.some((s: StyleOption) => s.id === current) ? current : preferred?.id || "");
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : "风格列表加载失败");
+    }).finally(() => setStylesLoading(false));
   }, []);
 
   const agentModelRows = useMemo(() => buildAgentModelRows(settings), [settings]);
@@ -94,14 +112,20 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
               <div>
                 <Label>风格指纹</Label>
                 <Select value={style} onValueChange={setStyle}>
-                  <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder={stylesLoading ? "加载风格中..." : "未选择风格"} />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="caoz">caoz 的梦呓 · 短句犀利 · 8 篇样本</SelectItem>
-                    <SelectItem value="bdj">半佛仙人 · 反讽密集 · 12 篇样本</SelectItem>
-                    <SelectItem value="hesheng">何加盐 · 长文叙事 · 15 篇样本</SelectItem>
-                    <SelectItem value="custom">+ 上传新风格...</SelectItem>
+                    {styles.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {styleLabel(item)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {!stylesLoading && !styles.length && (
+                  <div className="mt-2 text-xs text-amber-600">暂无可用风格，任务会以无风格指纹启动。</div>
+                )}
               </div>
               <div>
                 <Label>目标平台</Label>
@@ -167,7 +191,7 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
             </CardContent>
           </Card>
 
-          <Button className="w-full" size="lg" onClick={launch} disabled={launching || !request.trim()}>
+          <Button className="w-full" size="lg" onClick={launch} disabled={launching || stylesLoading || !request.trim()}>
             {launching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
             {launching ? "启动中" : "启动生成"}
           </Button>
@@ -186,6 +210,11 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
       </div>
     </div>
   );
+}
+
+function styleLabel(style: StyleOption) {
+  const samples = Number(style.sample_count || 0);
+  return `${style.name || style.id}${samples ? ` · ${samples} 篇样本` : ""}`;
 }
 
 function buildAgentModelRows(settings: any): string[][] {

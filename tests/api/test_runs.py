@@ -12,7 +12,10 @@ def client():
 
 
 def test_create_run(client):
-    with patch("app.api.runs.start_run_background", new_callable=AsyncMock):
+    with (
+        patch("app.api.runs._create_run_db", new=AsyncMock()),
+        patch("app.api.runs.start_run_background", new_callable=AsyncMock),
+    ):
         resp = client.post("/api/runs", json={"user_request": "测试", "mock": True})
     assert resp.status_code == 200
     data = resp.json()

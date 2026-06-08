@@ -115,8 +115,16 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
 
   async function handleAbort() {
     if (runId) {
-      await abortRun(runId);
-      onDone();
+      const result = await abortRun(runId);
+      setRun((prev: any) => ({
+        ...(prev || {}),
+        ...result,
+        run_id: runId,
+        status: "aborted",
+        error: prev?.error || "aborted by user",
+        ended_at: new Date().toISOString(),
+      }));
+      getRun(runId).then(setRun).catch(() => undefined);
     }
   }
 

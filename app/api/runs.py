@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import uuid
 import logging
+import os
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from app.api.errors import raise_llm_http_error
 from app.workers.runner import start_run_background, get_event_stream, _event_queues, cancel_run
 from app.services.memory_store import EVENTS, RUNS, upsert_run
 
@@ -30,26 +32,33 @@ class ResumeRequest(BaseModel):
     state_patch: dict = {}
 
 
-async def _try_db_write_run(run_id: str, req: CreateRunRequest) -> bool:
-    try:
-        from sqlalchemy import select
-        from app.db.session import get_session
-        from app.db.models import Run
-        async with get_session() as session:
-            run = Run(
-                id=uuid.UUID(run_id),
-                user_request=req.user_request,
-                style_id=req.style_id,
-                target_platform=req.target_platform,
-                config={"mock": req.mock, **req.config},
-                status="drafting",
-            )
-            session.add(run)
-            await session.commit()
-        return True
-    except Exception as e:
-        logger.debug(f"DB write skipped: {e}")
-        return False
+def _memory_fallback_enabled() -> bool:
+    return os.getenv("ACF_ENABLE_MEMORY_FALLBACK", "0") == "1"
+
+
+async def _style_exists(style_id: str) -> bool:
+    from app.db.session import get_session
+    from app.db.models import Style
+
+    async with get_session() as session:
+        return bool(await session.get(Style, style_id))
+
+
+async def _create_run_db(run_id: str, req: CreateRunRequest) -> None:
+    from app.db.session import get_session
+    from app.db.models import Run
+
+    async with get_session() as session:
+        run = Run(
+            id=uuid.UUID(run_id),
+            user_request=req.user_request,
+            style_id=req.style_id,
+            target_platform=req.target_platform,
+            config={"mock": req.mock, **req.config},
+            status="drafting",
+        )
+        session.add(run)
+        await session.commit()
 
 
 @router.post("")
@@ -57,8 +66,31 @@ async def create_run(req: CreateRunRequest, bg: BackgroundTasks):
     """创建并启动一次生成任务"""
     run_id = str(uuid.uuid4())
 
-    db_ok = await _try_db_write_run(run_id, req)
-    if not db_ok:
+    if req.style_id and not await _style_exists(req.style_id):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "STYLE_NOT_FOUND",
+                "message": f"风格不存在或未入库：{req.style_id}",
+                "style_id": req.style_id,
+            },
+        )
+
+    try:
+        await _create_run_db(run_id, req)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to create run in database")
+        if not _memory_fallback_enabled():
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "RUN_DB_WRITE_FAILED",
+                    "message": "任务没有写入数据库，已阻止假启动",
+                    "error": str(exc),
+                },
+            ) from exc
         upsert_run(
             run_id,
             user_request=req.user_request,
@@ -113,7 +145,10 @@ async def list_runs(status: str | None = None, limit: int = Query(20, le=100)):
             runs = [r for r in runs if r.get("status") == status]
         for r in runs:
             r.setdefault("words", len((r.get("final_md") or r.get("draft_md") or "")))
-        return {"runs": runs, "total": len(runs), "_source": "memory"}
+        if _memory_fallback_enabled():
+            return {"runs": runs, "total": len(runs), "_source": "memory"}
+        logger.exception("Failed to list runs from database")
+        raise HTTPException(status_code=500, detail={"code": "RUN_DB_READ_FAILED", "message": "读取任务列表失败"})
 
 
 @router.get("/{run_id}")
@@ -155,9 +190,9 @@ async def get_run(run_id: str):
             data["run_id"] = run_id
         return data
     except Exception:
-        if run_id in RUNS:
+        if _memory_fallback_enabled() and run_id in RUNS:
             return {"run_id": run_id, **RUNS[run_id]}
-        return {"run_id": run_id, "status": "unknown", "_source": "memory"}
+        raise HTTPException(status_code=404, detail={"code": "RUN_NOT_FOUND", "message": "任务不存在或未持久化"})
 
 
 @router.get("/{run_id}/stream")
@@ -190,13 +225,16 @@ async def get_events(run_id: str, after_id: int = 0):
                 {"id": r.id, "event": r.event_type, "data": r.data, "ts_offset": r.ts_offset}
                 for r in rows
             ]
-        if not events and EVENTS.get(run_id):
+        if _memory_fallback_enabled() and not events and EVENTS.get(run_id):
             events = [e for e in EVENTS.get(run_id, []) if e["id"] > after_id]
             return {"events": events, "run_id": run_id, "_source": "memory"}
         return {"events": events, "run_id": run_id}
     except Exception:
-        rows = [e for e in EVENTS.get(run_id, []) if e["id"] > after_id]
-        return {"events": rows, "run_id": run_id, "_source": "memory"}
+        if _memory_fallback_enabled():
+            rows = [e for e in EVENTS.get(run_id, []) if e["id"] > after_id]
+            return {"events": rows, "run_id": run_id, "_source": "memory"}
+        logger.exception("Failed to read run events from database")
+        raise HTTPException(status_code=500, detail={"code": "RUN_EVENTS_DB_READ_FAILED", "message": "读取任务事件失败"})
 
 
 @router.post("/{run_id}/interrupt")
@@ -383,8 +421,11 @@ async def regenerate_image(run_id: str, body: RegenerateImageRequest):
         "context_after": "",
     }
 
-    enhanced = await enhance_prompt(placeholder, style_id=style_id, mock=False)
-    result = await generate_image(enhanced, placeholder["type"], placeholder["ratio"])
+    try:
+        enhanced = await enhance_prompt(placeholder, style_id=style_id, mock=False)
+        result = await generate_image(enhanced, placeholder["type"], placeholder["ratio"])
+    except Exception as exc:
+        raise_llm_http_error(exc, action="重新生成图片失败")
 
     new_img = {
         "para_id": idx,
