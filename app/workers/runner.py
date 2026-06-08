@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 
 from app.agents.graph import acompile_graph, ContentState
+from app.api.errors import format_llm_error
 from app.llm.budget import BudgetGuard, BudgetExceeded
 from app.services.memory_store import append_event, upsert_run
 
@@ -256,10 +257,12 @@ async def start_run(run_id: str, user_request: str, target_platform: str = "wech
 
     except Exception as e:
         elapsed = time.monotonic() - start_time
-        error_text = str(e) or repr(e)
+        error_detail = format_llm_error(e, action="生成任务运行失败")
+        error_text = f"{error_detail['code']}: {error_detail['message']}"
         await emit_event(run_id, "graph.error", {
             "run_id": run_id,
             "error": error_text,
+            "error_detail": error_detail,
             "elapsed_seconds": round(elapsed, 1),
         })
         upsert_run(run_id, status="failed", error=error_text)

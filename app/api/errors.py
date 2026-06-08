@@ -9,6 +9,13 @@ from tenacity import RetryError
 
 def raise_llm_http_error(exc: Exception, *, action: str = "LLM 调用失败") -> None:
     """Convert provider/client exceptions into stable HTTP error payloads."""
+    detail = format_llm_error(exc, action=action)
+    status_code = detail.pop("status_code")
+    raise HTTPException(status_code=status_code, detail=detail)
+
+
+def format_llm_error(exc: Exception, *, action: str = "LLM 调用失败") -> dict:
+    """Return a stable provider error payload suitable for APIs and run events."""
     root = _unwrap_retry_error(exc)
     status_code = 502
     code = "LLM_PROVIDER_ERROR"
@@ -30,16 +37,14 @@ def raise_llm_http_error(exc: Exception, *, action: str = "LLM 调用失败") ->
         else:
             code = f"LLM_HTTP_{root.status_code}"
 
-    raise HTTPException(
-        status_code=status_code,
-        detail={
-            "code": code,
-            "message": message,
-            "action": action,
-            "provider_status": provider_status,
-            "provider_body": provider_body if isinstance(provider_body, dict) else None,
-        },
-    )
+    return {
+        "status_code": status_code,
+        "code": code,
+        "message": message,
+        "action": action,
+        "provider_status": provider_status,
+        "provider_body": provider_body if isinstance(provider_body, dict) else None,
+    }
 
 
 def _unwrap_retry_error(exc: Exception) -> Exception:

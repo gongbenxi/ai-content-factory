@@ -9,7 +9,7 @@ from typing import Any, AsyncIterator
 import yaml
 from openai import APIStatusError, AsyncOpenAI
 from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import RetryError, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.llm._mock import MOCK_RESPONSES, build_mock_response, mock_usage
 from app.llm.budget import BudgetGuard, BudgetExceeded
@@ -47,11 +47,28 @@ def resolve_model(agent: str, config: dict | None = None, tier_override: str | N
 
 
 def _is_model_disabled_error(exc: Exception) -> bool:
+    exc = _unwrap_retry_error(exc)
     if isinstance(exc, APIStatusError) and exc.status_code == 403:
         body = getattr(exc, "body", None)
         if isinstance(body, dict) and body.get("code") == 30003:
             return True
     return "Model disabled" in str(exc)
+
+
+def _unwrap_retry_error(exc: Exception) -> Exception:
+    if isinstance(exc, RetryError):
+        try:
+            return exc.last_attempt.exception() or exc
+        except Exception:
+            return exc
+    return exc
+
+
+def _should_retry_llm_error(exc: Exception) -> bool:
+    root = _unwrap_retry_error(exc)
+    if isinstance(root, APIStatusError) and root.status_code in {400, 401, 402, 403, 404}:
+        return False
+    return True
 
 
 def _with_provider_defaults(provider: str, model: str, kw: dict) -> dict:
@@ -217,7 +234,11 @@ class LLMClient:
                 yield chunk.choices[0].delta.content
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=30))
+@retry(
+    retry=retry_if_exception(_should_retry_llm_error),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, max=30),
+)
 async def _call_with_retry(client: AsyncOpenAI, model: str, messages: list[dict], **kw) -> Any:
     max_tokens = kw.pop("max_tokens", 4096)
     return await client.chat.completions.create(
