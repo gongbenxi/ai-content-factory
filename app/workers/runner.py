@@ -103,7 +103,7 @@ async def emit_event(run_id: str, event_type: str, data: dict):
     start = _run_starts.setdefault(run_id, time.monotonic())
     ts_offset = round(time.monotonic() - start, 3)
 
-    append_event(run_id, event_type, data)
+    memory_event = append_event(run_id, event_type, data)
     try:
         await asyncio.wait_for(
             _append_event_db(run_id, event_type, data, ts_offset),
@@ -132,7 +132,9 @@ async def emit_event(run_id: str, event_type: str, data: dict):
     elif event_type == "graph.done":
         update_fields = {"status": "done", "current_agent": None}
     elif event_type == "graph.error":
-        update_fields = {"status": "failed", "error": data.get("error"), "current_agent": None}
+        error_text = str(data.get("error") or "")
+        status = "aborted" if "aborted by user" in error_text.lower() else "failed"
+        update_fields = {"status": status, "error": data.get("error"), "current_agent": None}
     if update_fields:
         upsert_run(run_id, **update_fields)
         try:
@@ -144,7 +146,7 @@ async def emit_event(run_id: str, event_type: str, data: dict):
             pass
 
     queue = _get_event_queue(run_id)
-    await queue.put({"event": event_type, "data": data})
+    await queue.put({"event": event_type, "id": str(memory_event.get("id")), "data": data})
 
 
 async def get_event_stream(run_id: str, after_id: int = 0):

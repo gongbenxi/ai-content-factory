@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -6,17 +6,17 @@ import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
 import { Pause, Square, RotateCcw, CheckCircle2, Loader2, Circle, AlertCircle, Wand2, Search, FileEdit, PenTool, Image as ImageIcon, ShieldCheck, GitBranch } from "lucide-react";
 import { Pie, PieChart, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { abortRun, getRun, getRunEvents, interruptRun, resumeRun } from "../../lib/api";
+import { abortRun, getRun, getRunEvents, getSettings, interruptRun, resumeRun } from "../../lib/api";
 import { useSSE } from "../../lib/useSSE";
 
 const agentDefs = [
-  { key: "topic", name: "TopicAgent", icon: Wand2, model: "MiMo-V2.5" },
-  { key: "planner", name: "PlannerAgent", icon: GitBranch, model: "MiMo-V2.5-Pro" },
-  { key: "researcher", name: "Researcher", icon: Search, model: "MiMo-V2.5" },
-  { key: "editor", name: "EditorAgent", icon: FileEdit, model: "MiMo-V2.5-Pro" },
-  { key: "writer", name: "WriterAgent", icon: PenTool, model: "MiMo-V2.5-Pro" },
+  { key: "topic", name: "TopicAgent", icon: Wand2, model: "DeepSeek V4 Flash" },
+  { key: "planner", name: "PlannerAgent", icon: GitBranch, model: "DeepSeek V4 Pro" },
+  { key: "researcher", name: "Researcher", icon: Search, model: "DeepSeek V4 Flash" },
+  { key: "editor", name: "EditorAgent", icon: FileEdit, model: "DeepSeek V4 Pro" },
+  { key: "writer", name: "WriterAgent", icon: PenTool, model: "DeepSeek V4 Pro" },
   { key: "illustrator", name: "IllustratorAgent", icon: ImageIcon, model: "FLUX/Kolors" },
-  { key: "reviewer", name: "ReviewerAgent", icon: ShieldCheck, model: "MiMo-V2.5-Pro" },
+  { key: "reviewer", name: "ReviewerAgent", icon: ShieldCheck, model: "DeepSeek V4 Pro" },
 ];
 
 const costColors = ["#a78bfa", "#8b5cf6", "#7c3aed", "#6366f1", "#4f46e5", "#0ea5e9", "#10b981"];
@@ -25,7 +25,16 @@ const statusIcon = (s: string) => {
   if (s === "done") return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
   if (s === "running") return <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />;
   if (s === "error") return <AlertCircle className="w-4 h-4 text-rose-500" />;
+  if (s === "aborted") return <Square className="w-4 h-4 text-zinc-500" />;
   return <Circle className="w-4 h-4 text-muted-foreground/40" />;
+};
+
+const runStatus: Record<string, { text: string; cls: string }> = {
+  done: { text: "已完成", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/20" },
+  failed: { text: "失败", cls: "bg-rose-500/15 text-rose-600 border-rose-500/20" },
+  aborted: { text: "已中止", cls: "bg-zinc-500/15 text-zinc-600 border-zinc-500/20" },
+  paused: { text: "已暂停", cls: "bg-sky-500/15 text-sky-600 border-sky-500/20" },
+  drafting: { text: "生成中", cls: "bg-violet-500/15 text-violet-600 border-violet-500/20" },
 };
 
 export function RunLive({ runId, initialRun, onDone }: { runId: string | null; initialRun?: any; onDone: () => void }) {
@@ -34,6 +43,8 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
   const [run, setRun] = useState<any>(initialRun || null);
   const [emptyEventTimedOut, setEmptyEventTimedOut] = useState(false);
   const [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(null);
+  const [settings, setSettings] = useState<any>(null);
+  const writerScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!runId) return;
@@ -42,13 +53,17 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
     setEmptyEventTimedOut(false);
     setSelectedEventIndex(null);
     const load = () => getRun(runId).then(setRun).catch(() => undefined);
+    const loadEvents = () => getRunEvents(runId).then((res) => setHistoryEvents(res.events || [])).catch(() => undefined);
     load();
-    getRunEvents(runId).then((res) => setHistoryEvents(res.events || [])).catch(() => undefined);
-    const timer = window.setInterval(load, 3000);
+    loadEvents();
+    const timer = window.setInterval(() => {
+      load();
+      loadEvents();
+    }, 3000);
     return () => window.clearInterval(timer);
   }, [runId, initialRun]);
 
-  const allEvents = useMemo(() => [...historyEvents, ...events], [historyEvents, events]);
+  const allEvents = useMemo(() => mergeEvents(historyEvents, events), [historyEvents, events]);
   const businessEvents = useMemo(() => allEvents.filter((e) => e.event !== "heartbeat" && e.event !== "message"), [allEvents]);
   const selectedEvent = selectedEventIndex === null ? null : allEvents[selectedEventIndex];
 
@@ -65,13 +80,28 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
     if (run?.status === "done") {
       for (const def of agentDefs) status[def.key] = "done";
     }
-    return agentDefs.map((def) => ({ ...def, status: status[def.key] || "pending" }));
-  }, [allEvents, run]);
+    if (run?.status === "aborted" || (run?.status === "failed" && isAbortError(run?.error))) {
+      for (const key of Object.keys(status)) {
+        if (status[key] === "running") status[key] = "aborted";
+      }
+    }
+    return agentDefs.map((def) => ({
+      ...def,
+      model: displayModelForAgent(def.key, def.model, settings),
+      status: status[def.key] || "pending",
+    }));
+  }, [allEvents, run, settings]);
 
   const doneCount = agents.filter((a) => a.status === "done").length;
-  const draft = run?.draft_md || allEvents.filter((e) => e.event === "writer.token").map((e) => e.data?.delta || e.data?.text || "").join("");
+  const streamedDraft = useMemo(
+    () => allEvents.filter((e) => e.event === "writer.token").map((e) => e.data?.delta || e.data?.text || "").join(""),
+    [allEvents]
+  );
+  const draft = streamedDraft || run?.draft_md || "";
   const graphError = run?.error || [...allEvents].reverse().find((e) => e.event === "graph.error")?.data?.error;
-  const isTerminal = run?.status === "done" || run?.status === "failed" || run?.status === "aborted";
+  const normalizedStatus = normalizeRunStatus(run?.status, graphError);
+  const currentRunStatus = runStatus[normalizedStatus || "drafting"] ?? runStatus.drafting;
+  const isTerminal = run?.status === "done" || run?.status === "failed" || run?.status === "aborted" || run?.status === "paused";
   const startupWarning = emptyEventTimedOut && !businessEvents.length && !draft && !isTerminal;
   const eventUsage = useMemo(() => sumUsageFromEvents(allEvents), [allEvents]);
   const liveTotalTokens = Math.max(run?.total_tokens || 0, eventUsage.totalTokens);
@@ -91,10 +121,20 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
   }
 
   useEffect(() => {
+    getSettings().then(setSettings).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!runId) return;
     const timer = window.setTimeout(() => setEmptyEventTimedOut(true), 8000);
     return () => window.clearTimeout(timer);
   }, [runId]);
+
+  useEffect(() => {
+    const el = writerScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [draft]);
 
   if (!runId) {
     return <div className="p-8 text-muted-foreground">还没有活动运行。请先创建一个生成任务。</div>;
@@ -106,7 +146,7 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
         <div>
           <div className="flex items-center gap-3">
             <h1>Run #{runId.slice(0, 8)}</h1>
-            <Badge className="bg-violet-500/15 text-violet-600 border-violet-500/20">{run?.status || "drafting"}</Badge>
+            <Badge className={currentRunStatus.cls}>{currentRunStatus.text}</Badge>
             <Badge variant="outline">{connected ? "SSE 已连接" : "SSE 连接中"}</Badge>
           </div>
           <p className="text-muted-foreground text-sm mt-1">{run?.user_request || "生成任务初始化中"} · {run?.target_platform || "wechat"}</p>
@@ -120,19 +160,19 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <KPI label="进度" value={`${doneCount} / 7`} sub={agents.find((a) => a.status === "running")?.name || "等待事件"} />
+        <KPI label="进度" value={`${doneCount} / ${agents.length}`} sub={agents.find((a) => a.status === "running")?.name || "等待事件"} />
         <KPI label="事件数" value={String(allEvents.length)} sub="历史 + 实时 SSE" />
-        <KPI label="累计 token" value={liveTotalTokens.toLocaleString()} sub={eventUsage.totalTokens ? "事件实时汇总" : "预算 200K"} />
-        <KPI label="累计成本" value={`¥${(liveCostCents / 100).toFixed(2)}`} sub={eventUsage.costCents ? "事件实时汇总" : "Token Plan 内"} />
+        <KPI label="累计 token" value={liveTotalTokens.toLocaleString()} sub={eventUsage.totalTokens ? "事件实时汇总" : `预算 ${formatTokenBudget(settings)}`} />
+        <KPI label="累计成本" value={`¥${(liveCostCents / 100).toFixed(2)}`} sub={eventUsage.costCents ? "事件实时汇总" : run?.cost_cents ? "后端累计" : "等待用量"} />
       </div>
 
       {graphError && (
-        <Card className="border-rose-500/30 bg-rose-500/10">
+        <Card className={isAbortError(graphError) ? "border-zinc-500/30 bg-zinc-500/10" : "border-rose-500/30 bg-rose-500/10"}>
           <CardContent className="p-4">
-            <div className="flex items-start gap-3 text-rose-600">
+            <div className={`flex items-start gap-3 ${isAbortError(graphError) ? "text-zinc-600 dark:text-zinc-300" : "text-rose-600"}`}>
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="min-w-0">
-                <div className="font-medium">生成任务失败</div>
+                <div className="font-medium">{isAbortError(graphError) ? "任务已中止" : "生成任务失败"}</div>
                 <div className="mt-1 break-words text-xs opacity-90">{graphError}</div>
               </div>
             </div>
@@ -186,13 +226,13 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>WriterAgent · 流式输出</CardTitle>
             <Badge variant="outline">
-              {run?.status === "done" ? "done" : run?.status === "failed" ? "failed" : <><Loader2 className="w-3 h-3 mr-1 animate-spin" />streaming</>}
+              {writerBadge(normalizedStatus)}
             </Badge>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-72 rounded-md bg-muted/40 p-4 font-mono text-sm leading-relaxed">
+            <div ref={writerScrollRef} className="h-72 overflow-y-auto rounded-md bg-muted/40 p-4 font-mono text-sm leading-relaxed">
               <div className="whitespace-pre-wrap">{draft || "等待 WriterAgent 输出..."}</div>
-            </ScrollArea>
+            </div>
             <div className="mt-3">
               <div className="flex justify-between text-xs text-muted-foreground mb-1">
                 <span>预计 1900 字</span><span>已生成 ~ {draft.length} 字符</span>
@@ -291,6 +331,36 @@ export function RunLive({ runId, initialRun, onDone }: { runId: string | null; i
   );
 }
 
+function writerBadge(status?: string) {
+  if (status === "done") return "done";
+  if (status === "failed") return "failed";
+  if (status === "aborted") return "aborted";
+  if (status === "paused") return "paused";
+  return <><Loader2 className="w-3 h-3 mr-1 animate-spin" />streaming</>;
+}
+
+function isAbortError(error?: string) {
+  return String(error || "").toLowerCase().includes("aborted by user");
+}
+
+function normalizeRunStatus(status?: string, error?: string) {
+  if (status === "failed" && isAbortError(error)) return "aborted";
+  return status;
+}
+
+function displayModelForAgent(agentKey: string, fallback: string, settings: any) {
+  if (agentKey === "illustrator") return "Kolors / FLUX fallback";
+  const cfg = settings?.agents?.[agentKey];
+  const model = cfg ? settings?.providers?.[cfg.provider]?.models?.[cfg.tier] : null;
+  return model || fallback;
+}
+
+function formatTokenBudget(settings: any) {
+  const maxTokens = Number(settings?.budget?.max_tokens_per_run || 200000);
+  if (maxTokens >= 1000) return `${Math.round(maxTokens / 1000)}K`;
+  return String(maxTokens);
+}
+
 function eventSummary(event: any) {
   const data = event.data || {};
   if (event.event === "writer.token" || event.event === "agent.token") {
@@ -300,6 +370,22 @@ function eventSummary(event: any) {
   if (event.event === "graph.error") return String(data.error || "graph.error");
   if (event.event === "tool.call") return `${data.tool || "tool"} ${data.query || data.url || ""}`;
   return JSON.stringify(data);
+}
+
+function mergeEvents(historyEvents: any[], liveEvents: any[]) {
+  const merged: any[] = [];
+  const seen = new Set<string>();
+
+  for (const event of [...historyEvents, ...liveEvents]) {
+    const key = event.id ? `${event.event}:${event.id}` : "";
+    if (key) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    merged.push(event);
+  }
+
+  return merged;
 }
 
 function sumUsageFromEvents(events: any[]) {

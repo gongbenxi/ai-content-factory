@@ -2,7 +2,13 @@
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(_ENV_PATH)
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",

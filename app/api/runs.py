@@ -92,8 +92,15 @@ async def list_runs(status: str | None = None, limit: int = Query(20, le=100)):
                     "user_request": r.user_request,
                     "status": r.status,
                     "current_agent": r.current_agent,
+                    "style_id": r.style_id,
+                    "target_platform": r.target_platform,
+                    "config": r.config,
+                    "review": r.review,
                     "cost_cents": r.cost_cents,
                     "total_tokens": r.total_tokens,
+                    # 正文字数：前端据此判断是否有可编辑草稿，决定打开编辑器还是实时页
+                    "words": len((r.final_md or r.draft_md or "")),
+                    "ended_at": r.ended_at.isoformat() if r.ended_at else None,
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                 }
                 for r in rows
@@ -104,6 +111,8 @@ async def list_runs(status: str | None = None, limit: int = Query(20, le=100)):
         runs = list(RUNS.values())[-limit:]
         if status:
             runs = [r for r in runs if r.get("status") == status]
+        for r in runs:
+            r.setdefault("words", len((r.get("final_md") or r.get("draft_md") or "")))
         return {"runs": runs, "total": len(runs), "_source": "memory"}
 
 

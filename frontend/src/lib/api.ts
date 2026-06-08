@@ -55,10 +55,10 @@ export const regenerateImage = (runId: string, index: number) =>
 
 // Topics
 export const getCandidates = () =>
-  apiFetch<{ candidates: any[] }>('/topics/candidates');
+  apiFetch<{ candidates: any[]; fetched_at?: string; cached?: boolean; count?: number; refresh_id?: number; source_counts?: Record<string, number>; error?: string | null }>('/topics/candidates');
 
 export const refreshCandidates = () =>
-  apiFetch<{ refreshed: boolean; count: number; candidates: any[] }>('/topics/refresh', { method: 'POST' });
+  apiFetch<{ refreshed: boolean; changed?: boolean; count: number; candidates: any[]; fetched_at?: string; refresh_id?: number; source_counts?: Record<string, number>; error?: string | null }>('/topics/refresh', { method: 'POST' });
 
 // Styles
 export const listStyles = () => apiFetch<{ styles: any[] }>('/styles');

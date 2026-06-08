@@ -12,14 +12,7 @@ import { completeRun, exportRun, getRun, updateArticle, regenerateImage } from "
 
 function buildRadarData(review: any): { axis: string; target: number; draft: number }[] {
   if (!review?.style_scores) {
-    return [
-      { axis: "短句率", target: 90, draft: 86 },
-      { axis: "反讽密度", target: 75, draft: 68 },
-      { axis: "钩子强度", target: 88, draft: 91 },
-      { axis: "口语化", target: 82, draft: 79 },
-      { axis: "数据密度", target: 70, draft: 78 },
-      { axis: "段落节奏", target: 85, draft: 80 },
-    ];
+    return [];
   }
   const ss = review.style_scores;
   return Object.entries(ss).map(([axis, val]: [string, any]) => ({
@@ -29,9 +22,37 @@ function buildRadarData(review: any): { axis: string; target: number; draft: num
   }));
 }
 
+function formatReviewPercent(score: any) {
+  const n = Number(score);
+  if (Number.isNaN(n)) return "-";
+  const pct = n <= 1 ? n * 100 : n * 10;
+  return `${Math.round(Math.max(0, Math.min(100, pct)))}%`;
+}
+
 const fallbackDraft = `# 等待生成结果
 
 当前还没有可编辑草稿。请先启动一次生成任务，或等待 WriterAgent 完成输出。`;
+
+function buildEmptyDraft(run: any): string {
+  if (!run) return fallbackDraft;
+  const status = run.status || "unknown";
+  if (status === "drafting" || status === "reviewing") {
+    return `# 草稿生成中\n\n当前状态：${status}。请到"实时运行"页查看进度，或稍后回来刷新。`;
+  }
+  if (status === "failed" || status === "aborted") {
+    const err = run.error ? `\n\n错误信息：${run.error}` : "";
+    return `# 运行未完成（${status}）\n\n该 run 未产出草稿。${err}`;
+  }
+  if (status === "done") {
+    const topic = run.topic?.title || run.topic?.selected_topic?.title || run.user_request || "未知主题";
+    const outline = run.final_outline || run.outline;
+    const outlineText = outline
+      ? "\n\n## 已生成的大纲\n\n" + "```json\n" + JSON.stringify(outline, null, 2) + "\n```"
+      : "";
+    return `# ${topic}\n\n> 该运行被标记为已完成，但后端未保存正文草稿（draft_md 为空）。可能 WriterAgent 未执行或写入丢失，请检查日志或重新发起一次运行。${outlineText}`;
+  }
+  return fallbackDraft;
+}
 
 export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack: () => void }) {
   const [run, setRun] = useState<any>(null);
@@ -73,11 +94,24 @@ export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack:
     if (!runId) return;
     getRun(runId).then((data) => {
       setRun(data);
-      setDraft(data.final_md || data.draft_md || fallbackDraft);
+      const real = data.final_md || data.draft_md;
+      const looksLikePlaceholder = real?.trim() === fallbackDraft.trim();
+      setDraft(real && !looksLikePlaceholder ? real : buildEmptyDraft(data));
     }).catch(() => {
       setDraft(`# 草稿读取失败\n\n未能读取 run ${runId} 的草稿内容，请返回 Dashboard 刷新后重试。`);
     });
   }, [runId]);
+
+  const hasRealDraft = useMemo(() => {
+    const trimmed = draft.trim();
+    if (!trimmed) return false;
+    if (trimmed === fallbackDraft.trim()) return false;
+    if (trimmed.startsWith("# 草稿生成中")) return false;
+    if (trimmed.startsWith("# 运行未完成")) return false;
+    if (trimmed.startsWith("# 草稿读取失败")) return false;
+    if (trimmed.includes("该运行被标记为已完成，但后端未保存正文草稿")) return false;
+    return true;
+  }, [draft]);
 
   const title = useMemo(() => {
     const firstHeading = draft.split("\n").find((line) => line.startsWith("# "));
@@ -87,6 +121,7 @@ export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack:
   const images = run?.images || [];
   const issues = run?.review?.issues || [];
   const radarData = useMemo(() => buildRadarData(run?.review), [run?.review]);
+  const readingMinutes = Math.max(1, Math.ceil(draft.length / 500));
 
   async function save() {
     if (!runId) return;
@@ -144,9 +179,9 @@ export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack:
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={downloadMd} disabled={!runId}><Download className="w-4 h-4 mr-2" />导出 .md</Button>
-          <Button variant="outline" onClick={save} disabled={!runId || saving}>{saving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}保存</Button>
+          <Button variant="outline" onClick={save} disabled={!runId || saving || !hasRealDraft}>{saving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}保存</Button>
           <Button variant="outline" onClick={onBack}>返回</Button>
-          <Button onClick={markDone} disabled={!runId}><Send className="w-4 h-4 mr-2" />标记完成</Button>
+          <Button onClick={markDone} disabled={!runId || !hasRealDraft} title={hasRealDraft ? undefined : "尚无可标记完成的草稿"}><Send className="w-4 h-4 mr-2" />标记完成</Button>
         </div>
       </div>
 
@@ -178,7 +213,7 @@ export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack:
                 <TabsContent value="preview" className="mt-4">
                   <div className="border rounded-lg p-6 max-w-md mx-auto bg-card">
                     <h2 className="mb-2">{title}</h2>
-                    <div className="text-xs text-muted-foreground mb-4">{run?.style_id || "default"} · 5 分钟阅读</div>
+                    <div className="text-xs text-muted-foreground mb-4">{run?.style_id || "default"} · 约 {readingMinutes} 分钟阅读</div>
                     <div className="text-sm leading-7 prose prose-sm max-w-none">
                       <ReactMarkdown>{draft}</ReactMarkdown>
                     </div>
@@ -191,7 +226,9 @@ export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack:
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>配图（{images.length}）</CardTitle>
-              <Button variant="ghost" size="sm"><RefreshCw className="w-4 h-4 mr-2" />批量重新生成</Button>
+              <Button variant="ghost" size="sm" disabled title="请逐张替换，避免一次性消耗过多图像额度">
+                <RefreshCw className="w-4 h-4 mr-2" />逐张替换
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-3">
@@ -223,20 +260,26 @@ export function ArticleEditor({ runId, onBack }: { runId: string | null; onBack:
             <CardHeader><CardTitle>风格匹配雷达</CardTitle></CardHeader>
             <CardContent>
               <div style={{ width: "100%", height: 240 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11 }} />
-                    <PolarRadiusAxis tick={false} axisLine={false} />
-                    <Radar name="目标风格" dataKey="target" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} />
-                    <Radar name="当前草稿" dataKey="draft" stroke="#10b981" fill="#10b981" fillOpacity={0.25} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                  </RadarChart>
-                </ResponsiveContainer>
+                {radarData.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={radarData}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11 }} />
+                      <PolarRadiusAxis tick={false} axisLine={false} />
+                      <Radar name="目标风格" dataKey="target" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} />
+                      <Radar name="当前草稿" dataKey="draft" stroke="#10b981" fill="#10b981" fillOpacity={0.25} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+                    暂无风格维度评分
+                  </div>
+                )}
               </div>
               <div className="mt-2 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">综合相似度</span>
-                <span className="text-emerald-600">{run?.review?.score ? `${Math.round(run.review.score * 10)}%` : "-"}</span>
+                <span className="text-emerald-600">{formatReviewPercent(run?.review?.score)}</span>
               </div>
             </CardContent>
           </Card>

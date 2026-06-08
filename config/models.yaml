@@ -4,7 +4,7 @@
 # 切换 provider：改对应 agent 的 provider 字段即可，Agent 代码不动。
 
 defaults:
-  active_provider: xiaomi
+  active_provider: deepseek
 
 providers:
   xiaomi:
@@ -15,11 +15,11 @@ providers:
       balanced: "mimo-v2.5-pro"
 
   deepseek:
-    base_url: "https://api.deepseek.com/v1"
+    base_url: "https://api.deepseek.com"
     api_key_env: "DEEPSEEK_API_KEY"
     models:
-      fast: "deepseek-chat"
-      balanced: "deepseek-chat"
+      fast: "deepseek-v4-flash"
+      balanced: "deepseek-v4-pro"
 
   openai:
     base_url: "https://api.openai.com/v1"
@@ -30,14 +30,14 @@ providers:
 
 # 每个 agent 选 provider + tier
 agents:
-  topic:      { provider: xiaomi, tier: fast }
-  researcher: { provider: xiaomi, tier: fast }
-  planner:    { provider: xiaomi, tier: balanced }
-  editor:     { provider: xiaomi, tier: balanced }
-  writer:     { provider: xiaomi, tier: balanced }
-  illustrator: { provider: xiaomi, tier: fast }
-  reviewer:   { provider: xiaomi, tier: balanced }
-  reviser:    { provider: xiaomi, tier: balanced }
+  topic:      { provider: deepseek, tier: fast }
+  researcher: { provider: deepseek, tier: fast }
+  planner:    { provider: deepseek, tier: balanced }
+  editor:     { provider: deepseek, tier: balanced }
+  writer:     { provider: deepseek, tier: balanced }
+  illustrator: { provider: deepseek, tier: fast }
+  reviewer:   { provider: deepseek, tier: balanced }
+  reviser:    { provider: deepseek, tier: balanced }
 
 # 预算控制
 budget:

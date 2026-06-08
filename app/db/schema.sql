@@ -36,7 +36,7 @@ CREATE TABLE runs (
 
     -- 状态机
     status TEXT NOT NULL DEFAULT 'drafting'
-           CHECK (status IN ('drafting', 'reviewing', 'needs_human', 'done', 'published', 'failed')),
+           CHECK (status IN ('drafting', 'reviewing', 'needs_human', 'done', 'published', 'failed', 'paused', 'aborted')),
     current_agent   TEXT,
     error           TEXT,
 

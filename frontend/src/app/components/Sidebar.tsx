@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { LayoutDashboard, PlayCircle, Activity, FileEdit, Palette, Settings as SettingsIcon, Sparkles, Sun, Moon } from "lucide-react";
 import { cn } from "./ui/utils";
+import { getSettings } from "../../lib/api";
 
 export type PageKey = "dashboard" | "new-run" | "run-live" | "editor" | "styles" | "settings";
 
@@ -23,6 +25,17 @@ export function Sidebar({
   dark: boolean;
   onToggleDark: () => void;
 }) {
+  const [provider, setProvider] = useState("deepseek");
+  const [budgetK, setBudgetK] = useState(200);
+
+  useEffect(() => {
+    getSettings().then((settings) => {
+      setProvider(settings?.defaults?.active_provider || "deepseek");
+      const maxTokens = Number(settings?.budget?.max_tokens_per_run || 200000);
+      setBudgetK(Math.round(maxTokens / 1000));
+    }).catch(() => undefined);
+  }, []);
+
   return (
     <aside className="w-60 shrink-0 border-r bg-card flex flex-col">
       <div className="h-14 flex items-center gap-2.5 px-4 border-b">
@@ -61,11 +74,9 @@ export function Sidebar({
         })}
       </nav>
       <div className="p-4 border-t text-xs text-muted-foreground">
-        <div className="flex justify-between"><span>Token 预算</span><span>43%</span></div>
-        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: "43%" }} />
-        </div>
-        <div className="mt-2">86,420 / 200,000 tokens</div>
+        <div className="flex justify-between"><span>Provider</span><span className="capitalize">{provider}</span></div>
+        <div className="mt-2 flex justify-between"><span>单 run 上限</span><span>{budgetK}K tokens</span></div>
+        <div className="mt-2">实时用量以运行页累计 token 为准</div>
       </div>
     </aside>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface SSEEvent {
+  id?: number;
   event: string;
   data: any;
 }
@@ -11,6 +12,7 @@ export function useSSE(runId: string | null) {
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
+    setEvents([]);
     if (!runId) return;
 
     const es = new EventSource(`/api/runs/${runId}/stream`);
@@ -19,11 +21,12 @@ export function useSSE(runId: string | null) {
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     const handleEvent = (eventName: string) => (e: MessageEvent) => {
+      const id = e.lastEventId ? Number(e.lastEventId) : undefined;
       try {
         const parsed = JSON.parse(e.data);
-        setEvents((prev) => [...prev, { event: eventName, data: parsed }]);
+        setEvents((prev) => [...prev, { id, event: eventName, data: parsed }].slice(-1000));
       } catch {
-        setEvents((prev) => [...prev, { event: eventName, data: e.data }]);
+        setEvents((prev) => [...prev, { id, event: eventName, data: e.data }].slice(-1000));
       }
     };
 
@@ -34,6 +37,7 @@ export function useSSE(runId: string | null) {
       "graph.error",
       "agent.start",
       "agent.done",
+      "agent.warning",
       "agent.token",
       "tool.call",
       "writer.token",

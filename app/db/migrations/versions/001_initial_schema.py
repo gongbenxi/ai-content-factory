@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS runs (
     review          JSONB,
     revise_count    INT DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'drafting'
-           CHECK (status IN ('drafting', 'reviewing', 'needs_human', 'done', 'published', 'failed')),
+           CHECK (status IN ('drafting', 'reviewing', 'needs_human', 'done', 'published', 'failed', 'paused', 'aborted')),
     current_agent   TEXT,
     error           TEXT,
     cost_cents      INT DEFAULT 0,

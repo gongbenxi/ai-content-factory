@@ -75,9 +75,10 @@ def research_dispatcher(state: ContentState):
 
 
 def review_gate(state: ContentState) -> str:
-    """条件边：pass → END / fail & count<2 → reviser / fail & count≥2 → needs_human"""
+    """条件边：pass/score>=7 → END / fail & count<2 → reviser / fail & count≥2 → needs_human"""
     review = state.get("review") or {}
-    if review.get("pass"):
+    # pass=True 或 score>=7.0 都视为通过（避免不必要的修订循环）
+    if review.get("pass") or (review.get("score", 0) >= 7.0):
         return "done"
     if state.get("revise_count", 0) >= 2:
         return "needs_human"

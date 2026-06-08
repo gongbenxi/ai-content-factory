@@ -91,7 +91,7 @@ async def writer_agent(state: dict, config=None) -> dict:
         try:
             buffer = []
             last_flush = asyncio.get_running_loop().time()
-            async for chunk in llm.stream("writer", messages):
+            async for chunk in llm.stream("writer", messages, max_tokens=8192):
                 chunks.append(chunk)
                 buffer.append(chunk)
                 now = asyncio.get_running_loop().time()
@@ -102,9 +102,12 @@ async def writer_agent(state: dict, config=None) -> dict:
                     last_flush = now
             if buffer:
                 await emit_event(run_id, "writer.token", {"agent": "writer", "delta": "".join(buffer)})
-        except Exception:
+            if not chunks:
+                raise RuntimeError("empty stream response")
+        except Exception as exc:
             # fallback to non-streaming
-            content, usage = await llm.chat("writer", messages, mock=False)
+            await emit_event(run_id, "agent.warning", {"agent": "writer", "message": f"stream fallback: {str(exc)[:160]}"})
+            content, usage = await llm.chat("writer", messages, mock=False, max_tokens=8192)
             chunks.append(content)
             await emit_event(run_id, "writer.token", {"agent": "writer", "delta": content})
 

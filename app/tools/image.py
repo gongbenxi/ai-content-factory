@@ -10,10 +10,15 @@ import re
 import uuid
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # 占位符正则
 IMG_PATTERN = re.compile(r'\[IMG:\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^\]]+?)\s*\]')
 
 DATA_DIR = Path("data/images")
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+
+load_dotenv(_ENV_PATH)
 
 
 def parse_placeholders(draft_md: str) -> list[dict]:
@@ -42,25 +47,38 @@ async def enhance_prompt(placeholder: dict, style_id: str = "default", mock: boo
     messages = [
         {
             "role": "system",
-            "content": """你是 AI 绘图 prompt 工程师。
-任务：把图片描述与文章上下文融合，生成详细英文 prompt。
-要求：
-1. 画面内容必须呼应前文段落
-2. 风格匹配文章调性
-3. 加构图细节：构图、光线、色彩
-4. 加负面词：avoid: text, watermark, distorted hands, ugly face"""
+            "content": """You are an AI image prompt engineer. Your task is to convert a Chinese image description into a detailed ENGLISH prompt for AI image generation.
+
+CRITICAL: The "enhanced_prompt" field in your JSON output MUST be written in ENGLISH only. No Chinese characters allowed in the prompt.
+
+Requirements:
+1. The scene must reflect the article context
+2. Style should match the article tone
+3. Add composition details: composition, lighting, color palette
+4. Add negative prompt elements: avoid text, watermark, distorted hands, ugly face
+5. Be specific and descriptive (50-120 words)
+
+Return JSON:
+{"enhanced_prompt": "detailed English prompt here", "negative_prompt": "elements to avoid", "style_tags": ["tag1", "tag2"]}"""
         },
         {
             "role": "user",
-            "content": f"""前文段落：{placeholder['context_before']}
-图片描述：{placeholder['description']}
-画面类型：{placeholder['type']}
-画幅比例：{placeholder['ratio']}
-文章风格：{style_id}"""
+            "content": f"""Article context: {placeholder['context_before'][-300:]}
+Image description (Chinese): {placeholder['description']}
+Image type: {placeholder['type']}
+Aspect ratio: {placeholder['ratio']}
+Article style: {style_id}
+
+Remember: enhanced_prompt MUST be in English!"""
         },
     ]
-    content, _ = await llm.chat("illustrator", messages, mock=mock)
-    return content
+    try:
+        result, _ = await llm.chat_json("illustrator", messages, mock=mock)
+        return result.get("enhanced_prompt", placeholder["description"])
+    except Exception:
+        # LLM 返回非 JSON 时，直接用原始返回作为 prompt
+        content, _ = await llm.chat("illustrator", messages, mock=mock)
+        return content
 
 
 async def generate_image(enhanced_prompt: str, img_type: str, ratio: str = "16:9") -> dict:
@@ -87,7 +105,11 @@ async def generate_image(enhanced_prompt: str, img_type: str, ratio: str = "16:9
     elif img_type == "cover":
         result = await _gen_ai_image(enhanced_prompt, size, "Kwai-Kolors/Kolors")
     else:  # illustration
-        result = await _gen_ai_image(enhanced_prompt, size, "black-forest-labs/FLUX.1-schnell")
+        result = await _gen_ai_image_with_fallback(
+            enhanced_prompt,
+            size,
+            ["black-forest-labs/FLUX.1-schnell", "Kwai-Kolors/Kolors"],
+        )
 
     # 写入缓存
     if result.get("local_path"):
@@ -240,27 +262,52 @@ async def _gen_ai_image(prompt: str, size: str, model: str) -> dict:
         return {"url": f"/data/images/{filename}", "local_path": local_path, "model": "placeholder"}
 
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
-    resp = await client.images.generate(model=model, prompt=prompt, size=size, n=2)
-
-    urls = [img.url for img in resp.data]
-
-    # 下载图片到本地
     import httpx
+
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp_download = await client.get(urls[0])
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
+        resp = await client.images.generate(model=model, prompt=prompt, size=size, n=1)
+        url = resp.data[0].url
+    except Exception as e:
+        print(f"[image] SiliconFlow API error ({model}): {e}")
+        _gen_placeholder_image(local_path, prompt, "16:9", "API_ERROR")
+        return {"url": f"/data/images/{filename}", "local_path": local_path, "model": "placeholder"}
+
+    # 下载图片到本地 — 成功后用本地 URL 替代临时 CDN URL（避免签名过期）
+    public_url = url  # fallback 到 CDN URL
+    try:
+        async with httpx.AsyncClient(timeout=60) as http_client:
+            resp_download = await http_client.get(url)
             resp_download.raise_for_status()
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             Path(local_path).write_bytes(resp_download.content)
-    except Exception:
+            public_url = f"/data/images/{filename}"  # 用本地 URL，永久有效
+    except Exception as e:
+        print(f"[image] Download failed: {e}")
         local_path = ""
 
     return {
-        "url": urls[0],
-        "alt_urls": urls[1:],
+        "url": public_url,
         "local_path": local_path,
         "model": model,
+    }
+
+
+async def _gen_ai_image_with_fallback(prompt: str, size: str, models: list[str]) -> dict:
+    """Try AI image models in order; only fall back to placeholder after all fail."""
+    last_result: dict | None = None
+    for model in models:
+        result = await _gen_ai_image(prompt, size, model)
+        if result.get("model") != "placeholder":
+            if last_result:
+                result["fallback_from"] = last_result.get("failed_model")
+            return result
+        last_result = {"failed_model": model, **result}
+
+    return last_result or {
+        "url": "",
+        "local_path": "",
+        "model": "placeholder",
     }
 
 

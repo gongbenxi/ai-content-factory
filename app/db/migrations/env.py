@@ -1,12 +1,15 @@
 import os
+from pathlib import Path
 from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
+from dotenv import load_dotenv
 
 from alembic import context
 
 config = context.config
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

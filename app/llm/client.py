@@ -54,6 +54,22 @@ def _is_model_disabled_error(exc: Exception) -> bool:
     return "Model disabled" in str(exc)
 
 
+def _with_provider_defaults(provider: str, model: str, kw: dict) -> dict:
+    """Provider-specific request defaults.
+
+    DeepSeek V4 defaults to thinking mode, which can stream reasoning_content
+    before final content. Writer/editor UI only renders content, so disable
+    thinking unless the caller explicitly opts in.
+    """
+    if provider != "deepseek" or not model.startswith("deepseek-v4"):
+        return kw
+    next_kw = dict(kw)
+    extra_body = dict(next_kw.get("extra_body") or {})
+    extra_body.setdefault("thinking", {"type": "disabled"})
+    next_kw["extra_body"] = extra_body
+    return next_kw
+
+
 async def _write_token_usage(run_id: str, agent: str, usage: dict):
     """写入 token_usage 表"""
     try:
@@ -116,6 +132,7 @@ class LLMClient:
                 tier_override = effective_tier
 
         model, client, provider, tier = resolve_model(agent, cfg, tier_override)
+        kw = _with_provider_defaults(provider, model, kw)
 
         start = time.monotonic()
         try:
@@ -180,6 +197,7 @@ class LLMClient:
                 tier_override = effective_tier
 
         model, client, provider, tier = resolve_model(agent, cfg, tier_override)
+        kw = _with_provider_defaults(provider, model, kw)
 
         try:
             stream = await client.chat.completions.create(

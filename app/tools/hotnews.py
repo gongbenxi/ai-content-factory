@@ -101,16 +101,17 @@ def _fetch_baidu_sync(limit: int = 50) -> list[HotItem]:
         raise RuntimeError("百度热搜内容为空")
 
     now = datetime.now().isoformat()
+    total = len(raw_items)
     results: list[HotItem] = []
-    for item in raw_items[:limit]:
+    for idx, item in enumerate(raw_items[:limit]):
         title = item.get("word", "").strip()
         if not title:
             continue
 
-        # 标签解析
-        hot_tag = item.get("hotTag", "0")
-        label = ""
-        if item.get("labelTag"):
+        # 标签解析（兼容新旧 API）
+        hot_tag = str(item.get("hotTag", "0"))
+        label = item.get("newHotName", "")  # 新 API 用 newHotName
+        if not label and item.get("labelTag"):
             label = item["labelTag"].get("day", {}).get("text", "")
 
         if label:
@@ -119,16 +120,24 @@ def _fetch_baidu_sync(limit: int = 50) -> list[HotItem]:
             category = "新"
         elif hot_tag == "3":
             category = "热"
+        elif item.get("isTop"):
+            category = "置顶"
         else:
             category = "综合"
 
+        # 热度值：优先用 hotScore，否则按排名倒推（排名越靠前热度越高）
+        raw_score = item.get("hotScore") or item.get("heatScore") or 0
+        hot_score = int(raw_score) if raw_score else max(0, (total - idx) * 10000)
+
+        rank = item.get("index") or idx
+
         results.append(HotItem(
-            rank=item.get("index", 0),
+            rank=rank,
             title=title,
             source="baidu",
             category=category,
-            url=f"https://www.baidu.com/s?wd={title}",
-            hot_score=int(item.get("hotScore", 0) or 0),
+            url=item.get("url") or f"https://www.baidu.com/s?wd={title}",
+            hot_score=hot_score,
             fetched_at=now,
         ))
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -10,7 +10,7 @@ import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { AlertCircle, Loader2, Rocket, Wand2 } from "lucide-react";
-import { createRun, getRun } from "../../lib/api";
+import { createRun, getRun, getSettings } from "../../lib/api";
 
 export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLaunch: (runId: string, snapshot?: any) => void }) {
   const [request, setRequest] = useState(initialTitle ?? "今天 AI 圈有什么值得写的？模仿 caoz 风格的公众号文。");
@@ -20,6 +20,8 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
   const [revise, setRevise] = useState([2]);
   const [maxImg, setMaxImg] = useState([4]);
   const [budget, setBudget] = useState([200]);
+  const [budgetLimitCents, setBudgetLimitCents] = useState(300);
+  const [settings, setSettings] = useState<any>(null);
   const [mockMode, setMockMode] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,8 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
           research_parallel: parallel[0],
           max_revise_rounds: revise[0],
           max_images: maxImg[0],
-          budget_limit_cents: budget[0],
+          max_tokens_per_run: budget[0] * 1000,
+          budget_limit_cents: budgetLimitCents,
         },
       });
       const snapshot = await getRun(res.run_id);
@@ -50,6 +53,18 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
       setLaunching(false);
     }
   }
+
+  useEffect(() => {
+    getSettings().then((data) => {
+      setSettings(data);
+      const maxTokens = Number(data?.budget?.max_tokens_per_run);
+      if (maxTokens) setBudget([Math.round(maxTokens / 1000)]);
+      const limitCents = Number(data?.budget?.budget_limit_cents);
+      if (!Number.isNaN(limitCents)) setBudgetLimitCents(limitCents);
+    }).catch(() => undefined);
+  }, []);
+
+  const agentModelRows = useMemo(() => buildAgentModelRows(settings), [settings]);
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6 overflow-auto">
@@ -133,22 +148,14 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
               <Row label="LLM 调用" value={`~ ${8 + revise[0] * 4 + Math.ceil(parallel[0] / 2) * 3} 次`} />
               <Row label="Token 预估" value={`~ ${(50 + revise[0] * 20 + parallel[0] * 5).toFixed(0)}K`} />
               <Row label="图像生成" value={`${maxImg[0]} 张`} />
-              <Row label="预估成本" value={budget[0] > 0 ? `¥ ${(budget[0] / 100).toFixed(2)}` : "¥ 0.00"} highlight />
+              <Row label="金额熔断" value={`¥ ${(budgetLimitCents / 100).toFixed(2)}`} highlight />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle>Agent 模型分配</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {[
-                ["TopicAgent", "MiMo-V2.5", "fast"],
-                ["PlannerAgent", "MiMo-V2.5-Pro", "balanced"],
-                ["Researcher×N", "MiMo-V2.5", "fast"],
-                ["EditorAgent", "MiMo-V2.5-Pro", "balanced"],
-                ["WriterAgent", "MiMo-V2.5-Pro", "balanced"],
-                ["IllustratorAgent", "Coze Seedream", "image"],
-                ["ReviewerAgent", "MiMo-V2.5-Pro", "balanced"],
-              ].map(([a, m, t]) => (
+              {agentModelRows.map(([a, m, t]) => (
                 <div key={a} className="flex items-center justify-between">
                   <span>{a}</span>
                   <div className="flex items-center gap-2">
@@ -179,6 +186,24 @@ export function NewRun({ initialTitle, onLaunch }: { initialTitle?: string; onLa
       </div>
     </div>
   );
+}
+
+function buildAgentModelRows(settings: any): string[][] {
+  const rows: [string, string, string, string][] = [
+    ["topic", "TopicAgent", "DeepSeek V4 Flash", "fast"],
+    ["planner", "PlannerAgent", "DeepSeek V4 Pro", "balanced"],
+    ["researcher", "Researcher×N", "DeepSeek V4 Flash", "fast"],
+    ["editor", "EditorAgent", "DeepSeek V4 Pro", "balanced"],
+    ["writer", "WriterAgent", "DeepSeek V4 Pro", "balanced"],
+    ["illustrator", "IllustratorAgent", "Kolors / FLUX fallback", "image"],
+    ["reviewer", "ReviewerAgent", "DeepSeek V4 Pro", "balanced"],
+  ];
+  return rows.map(([key, label, fallback, tier]) => {
+    if (key === "illustrator") return [label, fallback, tier];
+    const cfg = settings?.agents?.[key];
+    const model = cfg ? settings?.providers?.[cfg.provider]?.models?.[cfg.tier] : null;
+    return [label, model || fallback, cfg?.tier || tier];
+  });
 }
 
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {

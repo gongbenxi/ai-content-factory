@@ -34,7 +34,17 @@ async def reviser_agent(state: dict, config=None) -> dict:
         )},
     ]
 
-    content, usage = await llm.chat("reviser", messages, mock=mock)
+    content, usage = await llm.chat("reviser", messages, mock=mock, max_tokens=8192)
+
+    # 去掉 LLM 可能包裹的 markdown 代码块标记
+    stripped = content.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        content = "\n".join(lines).strip()
 
     await emit_event(run_id, "agent.done", {
         "agent": "reviser",
