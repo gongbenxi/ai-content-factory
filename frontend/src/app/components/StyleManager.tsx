@@ -14,6 +14,7 @@ export function StyleManager() {
   const [analyzing, setAnalyzing] = useState(false);
   const [selectedStyle, setSelectedStyle] = useState<any | null>(null);
   const [fingerprint, setFingerprint] = useState<any | null>(null);
+  const [message, setMessage] = useState<{ type: "info" | "success" | "error"; text: string } | null>(null);
 
   async function refresh() {
     const res = await listStyles();
@@ -24,31 +25,42 @@ export function StyleManager() {
     if (!name.trim()) return;
     await createStyle({ name: name.trim(), description: "从前端创建" });
     setName("");
+    setMessage({ type: "success", text: "风格已创建，可以粘贴文章 URL 抽取指纹。" });
     await refresh();
   }
 
   async function handleAnalyze() {
-    if (!urlInput.trim()) return;
-    // 获取最新创建的风格作为分析目标，或创建新风格
+    const urls = urlInput.split("\n").map((u) => u.trim()).filter(Boolean);
+    if (!urls.length) {
+      setMessage({ type: "error", text: "请先粘贴至少 1 个文章 URL。" });
+      return;
+    }
+
+    // 优先写入选中的风格；没有选中时，用输入框名称自动创建一个新风格。
     let targetId = selectedStyle?.id;
     if (!targetId) {
-      if (!name.trim()) return;
-      const created = await createStyle({ name: name.trim(), description: "从URL分析创建" });
+      const fallbackName = `URL风格 ${new Date().toLocaleString("zh-CN", { hour12: false })}`;
+      const created = await createStyle({ name: name.trim() || fallbackName, description: "从URL分析创建" });
       targetId = created.id;
+      setSelectedStyle(created);
       setName("");
     }
 
     setAnalyzing(true);
+    setMessage({ type: "info", text: `正在抓取 ${urls.length} 个 URL 并抽取风格指纹...` });
     try {
-      const urls = urlInput.split("\n").map((u) => u.trim()).filter(Boolean);
       const result = await analyzeStyle(targetId, urls);
+      if (result.error) throw new Error(result.error);
       setFingerprint(result.fingerprint);
       setUrlInput("");
       await refresh();
       const detail = await getStyle(targetId);
       setSelectedStyle(detail);
+      const failures = result.scrape_failures?.length ? `，${result.scrape_failures.length} 个 URL 抓取失败` : "";
+      setMessage({ type: "success", text: `指纹抽取完成，已分析 ${result.articles_analyzed || urls.length} 篇文章${failures}。` });
     } catch (err) {
       console.error("Analyze failed:", err);
+      setMessage({ type: "error", text: formatAnalyzeError(err) });
     } finally {
       setAnalyzing(false);
     }
@@ -59,6 +71,7 @@ export function StyleManager() {
       const text = await navigator.clipboard.readText();
       if (text) {
         setUrlInput((prev) => (prev ? prev + "\n" + text : text));
+        setMessage({ type: "info", text: "已从剪贴板粘贴 URL，确认目标风格后可抽取。" });
       }
     } catch {
       // 剪贴板不可用
@@ -70,9 +83,11 @@ export function StyleManager() {
       const detail = await getStyle(style.id);
       setSelectedStyle(detail);
       setFingerprint(detail.fingerprint || null);
+      setMessage({ type: "info", text: `当前目标风格：${detail.name}` });
     } catch {
       setSelectedStyle(style);
       setFingerprint(style.fingerprint || null);
+      setMessage({ type: "info", text: `当前目标风格：${style.name}` });
     }
   }
 
@@ -112,6 +127,8 @@ export function StyleManager() {
   ];
 
   const displayTitle = selectedStyle?.name || "caoz";
+  const urls = urlInput.split("\n").map((u) => u.trim()).filter(Boolean);
+  const canAnalyze = !analyzing && urls.length > 0;
 
   return (
     <div className="p-8 space-y-6 overflow-auto">
@@ -129,6 +146,12 @@ export function StyleManager() {
       <Card>
         <CardHeader><CardTitle>从文章 URL 抽取风格</CardTitle></CardHeader>
         <CardContent>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline">
+              目标风格：{selectedStyle?.name || (name.trim() ? `新建「${name.trim()}」` : "未选择")}
+            </Badge>
+            <span className="text-muted-foreground">URL {urls.length} 个</span>
+          </div>
           <div className="flex gap-2">
             <div className="flex-1 flex items-start gap-2 px-3 border rounded-md focus-within:ring-2 focus-within:ring-ring">
               <LinkIcon className="w-4 h-4 text-muted-foreground mt-3" />
@@ -142,13 +165,26 @@ export function StyleManager() {
             </div>
             <div className="flex flex-col gap-1">
               <Button variant="outline" size="sm" onClick={handleBatchUpload}><Upload className="w-4 h-4 mr-1" />粘贴</Button>
-              <Button size="sm" onClick={handleAnalyze} disabled={analyzing || !urlInput.trim()}>
+              <Button size="sm" onClick={handleAnalyze} disabled={!canAnalyze}>
                 {analyzing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
                 抽取指纹
               </Button>
             </div>
           </div>
           <div className="mt-3 text-xs text-muted-foreground">系统会自动抓取 → 调用 LLM 提取风格指纹 → 入库</div>
+          {message && (
+            <div
+              className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+                message.type === "error"
+                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                  : message.type === "success"
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                    : "border-border bg-muted/40 text-muted-foreground"
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -211,6 +247,28 @@ export function StyleManager() {
       </div>
     </div>
   );
+}
+
+function formatAnalyzeError(err: unknown): string {
+  const fallback = "抽取失败，请检查 URL 是否可公开访问，或稍后重试。";
+  if (!(err instanceof Error)) return fallback;
+  const raw = err.message || fallback;
+  const marker = " - ";
+  const body = raw.includes(marker) ? raw.slice(raw.indexOf(marker) + marker.length) : raw;
+  try {
+    const parsed = JSON.parse(body);
+    const detail = parsed.detail;
+    if (typeof detail === "string") return detail;
+    if (detail?.message) {
+      const firstFailure = Array.isArray(detail.failures) && detail.failures[0]
+        ? `：${detail.failures[0].error}`
+        : "";
+      return `${detail.message}${firstFailure}`;
+    }
+  } catch {
+    // Fall back to the plain message below.
+  }
+  return body || fallback;
 }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {

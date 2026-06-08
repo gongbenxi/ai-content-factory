@@ -6,7 +6,7 @@ import json
 import uuid
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.services.memory_store import STYLES
 
@@ -114,17 +114,42 @@ async def analyze_style(style_id: str, req: AnalyzeRequest):
 
     urls = req.urls or []
     if not urls:
-        return {"error": "urls is required", "style_id": style_id}
+        raise HTTPException(status_code=400, detail="请至少提供 1 个文章 URL")
+
+    style_exists = False
+    try:
+        from app.db.session import get_session
+        from app.db.models import Style
+        async with get_session() as session:
+            style_exists = bool(await session.get(Style, style_id))
+    except Exception:
+        style_exists = style_id in STYLES
+
+    if not style_exists:
+        raise HTTPException(status_code=404, detail=f"风格不存在：{style_id}")
 
     # 抓取文章
     articles = []
+    scrape_failures = []
     for url in urls[:10]:
         result = await scrape_url(url)
         if result.get("success") and result.get("markdown"):
             articles.append({"url": url, "text": result["markdown"][:3000]})
+        else:
+            scrape_failures.append({
+                "url": url,
+                "error": result.get("error") or "未抓取到正文",
+            })
 
     if not articles:
-        return {"error": "no articles scraped", "style_id": style_id, "urls_tried": len(urls)}
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "没有抓取到可分析的文章正文",
+                "urls_tried": len(urls),
+                "failures": scrape_failures[:5],
+            },
+        )
 
     # LLM 提取风格指纹
     llm = LLMClient()
@@ -177,4 +202,5 @@ async def analyze_style(style_id: str, req: AnalyzeRequest):
         "status": "done",
         "fingerprint": fingerprint,
         "articles_analyzed": len(articles),
+        "scrape_failures": scrape_failures,
     }
